@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亞伯拉罕三代史地互動地圖</title>
+    <style>
+        :root { --main-gold: #c5a059; --bg-paper: #f9f4e8; }
+        body { font-family: "微軟正黑體", serif; background-color: var(--bg-paper); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1100px; margin: auto; }
+        h1 { text-align: center; color: #5d4037; border-bottom: 2px solid var(--main-gold); padding-bottom: 10px; }
+        
+        /* 地圖顯示區塊 */
+        .map-wrapper { position: relative; margin: 20px 0; border: 5px solid #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border-radius: 8px; overflow: hidden; }
+        .map-img { width: 100%; display: block; height: auto; }
+        
+        /* 地名標籤樣式 (動態產生) */
+        .marker {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid var(--main-gold);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            transform: translate(-50%, -100%); /* 讓標籤底部尖端對準座標 */
+            white-space: nowrap;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        /* 表格區塊 */
+        .table-section { background: white; border-radius: 8px; padding: 15px; margin-top: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .table-scroll { overflow-x: auto; max-height: 600px; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th { background-color: var(--main-gold); color: white; position: sticky; top: 0; z-index: 10; padding: 12px; text-align: left; }
+        td { border-bottom: 1px solid #eee; padding: 10px; font-size: 14px; }
+        tr:hover { background-color: #fff9eb; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>亞伯拉罕三代史地校勘互動地圖</h1>
+
+    <div class="map-wrapper" id="mapContainer">
+        <img src="Abraham_2.png" class="map-img" id="mainMap" alt="Canaan Map">
+        </div>
+
+    <div class="table-section">
+        <h3>歷史紀事全文校勘</h3>
+        <div class="table-scroll">
+            <table id="dataTable">
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // CSV 解析邏輯
+    async function loadSite() {
+        try {
+            const response = await fetch('data.csv');
+            if (!response.ok) throw new Error("找不到 data.csv 檔案");
+            const csvText = await response.text();
+            const rows = parseCSV(csvText);
+            
+            renderTable(rows);
+            // renderMarkers(rows); // 等我們把 X, Y 座標填入 CSV 後再啟動這行
+        } catch (err) {
+            console.error(err);
+            document.getElementById('tableBody').innerHTML = `<tr><td colspan="7" style="color:red;text-align:center;">錯誤：${err.message}</td></tr>`;
+        }
+    }
+
+    function parseCSV(text) {
+        return text.split('\n').filter(line => line.trim() !== '').map(line => {
+            // 處理含有逗號的引號欄位
+            const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+            return matches ? matches.map(m => m.replace(/^"|"$/g, '')) : [];
+        });
+    }
+
+    function renderTable(rows) {
+        const head = document.getElementById('tableHead');
+        const body = document.getElementById('tableBody');
+        
+        rows.forEach((row, i) => {
+            const tr = document.createElement('tr');
+            row.forEach(cell => {
+                const el = document.createElement(i === 0 ? 'th' : 'td');
+                el.textContent = cell;
+                tr.appendChild(el);
+            });
+            i === 0 ? head.appendChild(tr) : body.appendChild(tr);
+        });
+    }
+
+    window.onload = loadSite;
+</script>
+</body>
+</html>
