@@ -3,76 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>亞伯拉罕史地互動地圖 V4.1</title>
+    <title>亞伯拉罕史地互動地圖 V4.2</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --bg-dark: #2c3e50; --text-light: #ecf0f1; }
         * { box-sizing: border-box; font-family: "微軟正黑體", sans-serif; }
-        body { margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: #eee; }
+        body { margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: #333; }
         
         #app-container { display: flex; flex-direction: column; height: 100%; width: 100%; }
         @media (min-aspect-ratio: 1/1) { #app-container { flex-direction: row; } }
 
-        /* 地圖區塊 - 背景改為淺色沙地色融合新地圖 */
-        #map-section { flex: 1.5; position: relative; overflow: hidden; background: #fdf5e6; cursor: grab; }
+        /* 地圖區塊 - 保持 V4.0 的沉浸感 */
+        #map-section { flex: 1.5; position: relative; overflow: hidden; background: #222; cursor: grab; }
         #map-section:active { cursor: grabbing; }
         
-        /* 讓 panzoom 容器精準包裹圖片，消除底部空白 */
-        #panzoom-element { position: relative; display: inline-block; transform-origin: 0 0; line-height: 0; }
+        /* Panzoom 容器：確保它與圖片內容等大 */
+        #panzoom-element { position: relative; display: inline-block; transform-origin: 0 0; }
         
-        /* 圖片高度設限，寬度自適應，不裁切 */
-        #bg-map { display: block; max-height: 90vh; width: auto; pointer-events: none; border-radius: 4px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
+        #bg-map { display: block; max-height: 100vh; width: auto; pointer-events: none; }
         
-        #svg-layer, #marker-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        /* 覆蓋層：寬高將透過 JS 動態同步圖片大小 */
+        #overlay-container { position: absolute; top: 0; left: 0; pointer-events: none; }
+        #svg-layer, #marker-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-        /* 標籤樣式 (點) */
-        .marker { position: absolute; transform: translate(-50%, -50%); padding: 4px 8px; border-radius: 20px; font-size: 12px; font-weight: bold; background: rgba(255,255,255,0.85); border: 1px solid #999; color: #444; white-space: nowrap; transition: all 0.2s; pointer-events: auto; cursor: pointer; z-index: 11; box-shadow: 0 1px 3px rgba(0,0,0,0.2); line-height: 1.2; }
-        .marker:hover { background: #fff; border-color: var(--gold); transform: translate(-50%, -50%) scale(1.1); z-index: 100; opacity: 1 !important; box-shadow: 0 3px 8px rgba(0,0,0,0.3); }
-        .marker.active { background: var(--gold); color: white; border: 2px solid white; font-size: 14px; z-index: 100; opacity: 1 !important; box-shadow: 0 0 15px rgba(0,0,0,0.5); transform: translate(-50%, -50%) scale(1.1); }
-        .marker.low-priority { opacity: 0.8; font-size: 10px; z-index: 10; font-weight: normal; background: rgba(255,255,255,0.7); }
+        /* 標籤樣式 */
+        .marker { position: absolute; transform: translate(-50%, -50%); padding: 4px 8px; border-radius: 20px; font-size: 12px; font-weight: bold; background: rgba(255,255,255,0.9); border: 1px solid #999; color: #333; white-space: nowrap; transition: all 0.2s; pointer-events: auto; cursor: pointer; z-index: 11; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        .marker:hover { background: #fff; border-color: var(--gold); transform: translate(-50%, -50%) scale(1.1); z-index: 100; opacity: 1 !important; }
+        .marker.active { background: var(--gold); color: white; border: 2px solid white; font-size: 14px; z-index: 100; opacity: 1 !important; box-shadow: 0 0 15px rgba(255,255,255,0.5); }
+        .marker.low-priority { opacity: 0.7; font-size: 11px; font-weight: normal; background: rgba(255,255,255,0.7); }
+        .marker-dot-only { padding: 0; width: 8px; height: 8px; border-radius: 50%; background: #fff; border: 1px solid #666; color: transparent; overflow: hidden; }
 
-        /* 隱藏標籤，只顯示點 (防碰撞時使用) */
-        .marker-dot-only { padding: 0; width: 8px; height: 8px; border-radius: 50%; background: #666; border: 1px solid white; color: transparent; overflow: hidden; opacity: 0.6; }
-        .marker-dot-only:hover { opacity: 1; background: var(--gold); transform: translate(-50%, -50%) scale(1.5); }
-
-        /* 區域樣式 (Area) */
-        .marker-area { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(197, 160, 89, 0.15); border: 1px dashed rgba(197, 160, 89, 0.5); display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 9; transition: all 0.3s; }
-        .marker-area .marker-label { font-size: 14px; color: #8d6e32; font-weight: bold; text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff; opacity: 0.7; transition: opacity 0.3s; }
-        .marker-area.active { background: rgba(197, 160, 89, 0.35); border-color: var(--gold); border-width: 2px; z-index: 10; }
-        .marker-area.active .marker-label { opacity: 1; font-size: 16px; color: #b38022; }
+        /* 區域樣式 */
+        .marker-area { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(197, 160, 89, 0.2); border: 2px dashed rgba(197, 160, 89, 0.5); display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 9; }
+        .marker-area .marker-label { font-size: 14px; color: #fff; font-weight: bold; text-shadow: 1px 1px 3px #000; opacity: 0.8; }
+        .marker-area.active { background: rgba(197, 160, 89, 0.4); border-color: #fff; }
 
         /* 表格區塊 */
-        #table-section { flex: 1; background: white; overflow-y: auto; border-top: 4px solid var(--gold); }
-        @media (min-aspect-ratio: 1/1) { #table-section { border-top: none; border-left: 4px solid var(--gold); } }
+        #table-section { flex: 1; background: white; overflow-y: auto; border-top: 5px solid var(--gold); }
+        @media (min-aspect-ratio: 1/1) { #table-section { border-top: none; border-left: 5px solid var(--gold); } }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { background: var(--gold); color: white; position: sticky; top: 0; padding: 12px; text-align: left; z-index: 20; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        td { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
-        tr:hover td { background: #fdfaf1; }
-        tr.selected td { background: #fff9c4; font-weight: bold; border-left: 4px solid var(--gold); }
+        th { background: var(--bg-dark); color: white; position: sticky; top: 0; padding: 12px; text-align: left; z-index: 20; }
+        td { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
+        tr:hover td { background: #f5f5f5; }
+        tr.selected td { background: #fff9c4; font-weight: bold; border-left: 5px solid var(--gold); }
 
-        /* 可拖動資訊框 */
-        #info-box { position: fixed; top: 20px; right: 20px; width: 340px; background: white; border-radius: 8px; box-shadow: 0 8px 25px rgba(0,0,0,0.25); border-top: 6px solid var(--gold); z-index: 9999; display: none; cursor: default; flex-direction: column; max-height: 85vh; transition: box-shadow 0.2s; }
-        #info-box.dragging { box-shadow: 0 15px 35px rgba(0,0,0,0.3); opacity: 0.95; }
-        #info-box.minimized { height: auto; }
-        #info-box.minimized #info-body { display: none; }
-        
-        #info-header { padding: 12px 15px; background: #fcfcfc; cursor: grab; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; border-radius: 8px 8px 0 0; align-items: center; }
-        #info-header:active { cursor: grabbing; background: #f0f0f0; }
-        #info-header .controls { display: flex; gap: 12px; }
-        #info-header button { background: none; border: none; font-size: 18px; cursor: pointer; color: #aaa; padding: 0; line-height: 1; transition: color 0.2s; }
-        #info-header button:hover { color: var(--gold); }
-
+        /* 資訊框 */
+        #info-box { position: fixed; top: 20px; right: 20px; width: 320px; background: white; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-top: 6px solid var(--gold); z-index: 999; display: none; flex-direction: column; max-height: 80vh; }
+        #info-header { padding: 10px 15px; background: #f9f9f9; cursor: grab; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         #info-body { padding: 15px; overflow-y: auto; }
-        #info-body p { margin: 8px 0; font-size: 13.5px; line-height: 1.6; color: #444; }
-        .loc-tag { background: #f0f0f0; color: #555; padding: 3px 10px; border-radius: 15px; cursor: pointer; border: 1px solid #ddd; display: inline-block; margin-right: 6px; margin-bottom: 6px; transition: all 0.2s; font-size: 12px; font-weight: bold; }
-        .loc-tag:hover { background: var(--gold); color: white; border-color: var(--gold); box-shadow: 0 2px 5px rgba(197, 160, 89, 0.4); }
-        .loc-tag.disabled { opacity: 0.5; cursor: default; pointer-events: none; }
+        .loc-tag { background: #eee; padding: 2px 8px; border-radius: 10px; cursor: pointer; display: inline-block; margin: 2px; font-size: 12px; }
+        .loc-tag:hover { background: var(--gold); color: white; }
 
-        /* 控制按鈕 */
-        .controls-map { position: absolute; bottom: 25px; left: 25px; z-index: 100; display: flex; flex-direction: column; gap: 10px; }
-        .controls-map button { width: 44px; height: 44px; border-radius: 50%; border: 1px solid #ddd; background: rgba(255,255,255,0.9); box-shadow: 0 3px 8px rgba(0,0,0,0.15); cursor: pointer; font-size: 22px; color: #555; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
-        .controls-map button:hover { background: white; color: var(--gold); border-color: var(--gold); }
-        .controls-map button:active { transform: scale(0.95); }
+        .controls-map { position: absolute; bottom: 20px; left: 20px; z-index: 100; display: flex; flex-direction: column; gap: 8px; }
+        .controls-map button { width: 40px; height: 40px; border-radius: 5px; border: none; background: rgba(255,255,255,0.9); cursor: pointer; font-size: 20px; font-weight: bold; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
@@ -80,21 +63,23 @@
 <div id="app-container">
     <div id="map-section">
         <div id="panzoom-element">
-            <img src="Abraham_2_Cute.png" id="bg-map" alt="Base Map">
-            <svg id="svg-layer"></svg>
-            <div id="marker-layer"></div>
+            <img src="Abraham_2_Cute.png" id="bg-map" alt="Map">
+            <div id="overlay-container">
+                <svg id="svg-layer"></svg>
+                <div id="marker-layer"></div>
+            </div>
         </div>
 
         <div class="controls-map">
-            <button onclick="pz.zoomIn()" title="放大">+</button>
-            <button onclick="pz.zoomOut()" title="縮小">-</button>
-            <button onclick="resetMapAndFly()" title="重置視角">↺</button>
+            <button onclick="pz.zoomIn()">+</button>
+            <button onclick="pz.zoomOut()">-</button>
+            <button onclick="resetView()">↺</button>
         </div>
     </div>
 
     <div id="table-section">
         <table id="main-table">
-            <thead><tr><th width="60">序號</th><th>歷史事件內容</th></tr></thead>
+            <thead><tr><th width="50">#</th><th>事件內容</th></tr></thead>
             <tbody id="table-body"></tbody>
         </table>
     </div>
@@ -102,19 +87,15 @@
 
 <div id="info-box">
     <div id="info-header">
-        <span style="font-weight: bold; color: #555; font-size: 15px;">📍 事件詳情</span>
-        <div class="controls">
-            <button onclick="toggleMinimize()" title="最小化/展開">_</button>
-            <button onclick="closeInfoBox()" title="關閉">✕</button>
-        </div>
+        <span style="font-weight:bold">事件詳情</span>
+        <button onclick="this.parentElement.parentElement.style.display='none'" style="border:none;background:none;cursor:pointer">✕</button>
     </div>
     <div id="info-body">
-        <h3 id="info-title" style="margin-top:0; color:var(--gold); font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px;"></h3>
-        <p><strong>地理位置：</strong> <br><span id="info-loc-tags" style="display: block; margin-top: 5px;"></span></p>
-        <p><strong>時間資訊：</strong> <span id="info-time" style="color: #666;"></span></p>
-        <p><strong>經文出處：</strong> <i id="info-scripture" style="color:#2980b9; font-weight: bold;"></i></p>
-        <hr style="border:0; border-top:1px dashed #ddd; margin:15px 0;">
-        <p id="info-note" style="color: #666;"></p>
+        <h3 id="info-title" style="margin-top:0;color:var(--gold)"></h3>
+        <p><strong>地點：</strong> <span id="info-loc-tags"></span></p>
+        <p><strong>經文：</strong> <i id="info-scripture"></i></p>
+        <hr>
+        <p id="info-note" style="font-size:13px; color:#555"></p>
     </div>
 </div>
 
@@ -122,384 +103,200 @@
     let pz;
     let eventData = [], coordsData = {};
     let currentMap = 'small';
-    let labelCollisionModel = {};
-    let currentActivePlaces = []; 
+    let currentActivePlaces = [];
 
-    // 初始化 Panzoom (已移除 contain: outside，讓平移無死角)
+    const mapImg = document.getElementById('bg-map');
+    const overlay = document.getElementById('overlay-container');
     const elem = document.getElementById('panzoom-element');
+
+    // 初始化 Panzoom：移除 contain: 'outside'，允許自由拉動
     pz = Panzoom(elem, { 
-        maxScale: 6, 
+        maxScale: 5, 
         minScale: 0.5,
         canvas: true,
-        step: 0.2
+        contain: null // 允許拉動到任何地方
     });
     
-    const mapSection = document.getElementById('map-section');
-    mapSection.addEventListener('wheel', (e) => {
-        pz.zoomWithWheel(e);
-        e.preventDefault(); 
-    }, { passive: false });
+    document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
 
-    // 資訊框拖曳邏輯
-    const infoBox = document.getElementById("info-box");
-    ['mousedown', 'touchstart', 'wheel', 'pointerdown', 'click', 'dblclick'].forEach(evt => {
-        infoBox.addEventListener(evt, (e) => e.stopPropagation());
-    });
-
-    let isDragging = false, dragStartX, dragStartY, initialLeft, initialTop;
-    const header = document.getElementById("info-header");
-    
-    header.addEventListener('pointerdown', (e) => {
-        isDragging = true;
-        dragStartX = e.clientX; 
-        dragStartY = e.clientY;
-        initialLeft = infoBox.offsetLeft; 
-        initialTop = infoBox.offsetTop;
-        infoBox.classList.add('dragging');
-    });
-    
-    window.addEventListener('pointermove', (e) => {
-        if (!isDragging) return;
-        let newLeft = initialLeft + e.clientX - dragStartX;
-        let newTop = initialTop + e.clientY - dragStartY;
-        const maxLeft = window.innerWidth - infoBox.offsetWidth;
-        const maxTop = window.innerHeight - infoBox.offsetHeight;
-        newLeft = Math.max(0, Math.min(newLeft, maxLeft));
-        newTop = Math.max(0, Math.min(newTop, maxTop));
-        infoBox.style.left = newLeft + "px";
-        infoBox.style.top = newTop + "px";
-        infoBox.style.right = 'auto'; 
-    });
-    
-    window.addEventListener('pointerup', () => { 
-        isDragging = false; 
-        infoBox.classList.remove('dragging');
-    });
-
-    function toggleMinimize() { infoBox.classList.toggle('minimized'); }
-    function closeInfoBox() { infoBox.style.display = 'none'; }
-
-    // 別名字典
-    const aliasMap = {
-        "伯特利下邊": "伯特利",
-        "瑣珥附近山洞": "瑣珥",
-        "沙微谷": "摩利亞山"
-    };
-
-    function parseCSV(text) {
-        const rows = [];
-        let currentRow = [], currentCell = '', inQuotes = false;
-        for (let i = 0; i < text.length; i++) {
-            let c = text[i], next = text[i+1];
-            if (c === '"' && inQuotes && next === '"') { currentCell += '"'; i++; }
-            else if (c === '"') inQuotes = !inQuotes;
-            else if (c === ',' && !inQuotes) { currentRow.push(currentCell.trim()); currentCell = ''; }
-            else if (c === '\\n' && !inQuotes) { currentRow.push(currentCell.trim()); rows.push(currentRow); currentRow = []; currentCell = ''; }
-            else if (c !== '\\r') currentCell += c;
-        }
-        if (currentCell || currentRow.length > 0) currentRow.push(currentCell.trim());
-        if (currentRow.length > 0) rows.push(currentRow);
-        return rows;
+    // 同步圖層大小與座標系統
+    function syncOverlaySize() {
+        overlay.style.width = mapImg.clientWidth + "px";
+        overlay.style.height = mapImg.clientHeight + "px";
     }
+    window.addEventListener('resize', syncOverlaySize);
 
     async function loadData() {
-        try {
-            const [dataRes, coordsRes] = await Promise.all([
-                fetch('data.csv').catch(() => null),
-                fetch('coords.csv').catch(() => null)
-            ]);
+        const [cRes, dRes] = await Promise.all([fetch('coords.csv'), fetch('data.csv')]);
+        const cText = await cRes.text();
+        const dText = await dRes.text();
 
-            if (coordsRes && coordsRes.ok) {
-                const text = await coordsRes.text();
-                parseCSV(text).slice(1).forEach(r => {
-                    if(r[0]) coordsData[r[0]] = { xs: r[1], ys: r[2], xl: r[3], yl: r[4], type: r[5] || 'Point', radius: r[6] || 5 };
-                });
-            }
+        // 解析座標 (CSV 切分邏輯)
+        cText.split(/\r?\n/).slice(1).forEach(line => {
+            const r = line.split(',');
+            if(r[0]) coordsData[r[0]] = { xs: r[1], ys: r[2], xl: r[3], yl: r[4], type: r[5]||'Point', radius: r[6]||5 };
+        });
 
-            if (dataRes && dataRes.ok) {
-                const text = await dataRes.text();
-                const tbody = document.getElementById('table-body');
-                parseCSV(text).slice(1).forEach((r, i) => {
-                    if(!r[0]) return;
-                    eventData.push({ id: r[0], time: r[1], event: r[2], loc: r[3], script: r[4], note: r[5] || '' });
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `<td>${r[0]}</td><td>${r[2]}</td>`;
-                    tr.onclick = () => selectEvent(i, tr);
-                    tbody.appendChild(tr);
-                });
-            }
+        // 解析事件
+        const tbody = document.getElementById('table-body');
+        dText.split(/\r?\n/).slice(1).forEach((line, i) => {
+            const r = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // 處理包含逗號的引號欄位
+            if(!r[0]) return;
+            const item = { id: r[0], time: r[1], event: r[2].replace(/"/g,''), loc: r[3], script: r[4], note: r[5]||'' };
+            eventData.push(item);
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${item.id}</td><td>${item.event}</td>`;
+            tr.onclick = () => selectEvent(i, tr);
+            tbody.appendChild(tr);
+        });
 
-            renderMarkerLayer('small', []);
-            document.getElementById('bg-map').onload = () => { pz.reset(); };
-
-        } catch (error) {
-            console.error("資料載入發生錯誤:", error);
-        }
+        syncOverlaySize();
+        renderMarkers('small', []);
     }
 
-    function selectEvent(idx, trElement) {
+    function selectEvent(idx, tr) {
         document.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
-        if(trElement) trElement.classList.add('selected');
+        tr.classList.add('selected');
 
         const item = eventData[idx];
-        const rawLoc = item.loc;
-        if (!rawLoc) return;
-
-        let placesNames = rawLoc.split('→').map(p => p.replace(/\(.*?\)/g, '').trim());
-
-        let needLargeMap = false;
+        const placesNames = item.loc.split('→').map(p => p.replace(/\(.*?\)/g, '').trim());
+        
+        let needLarge = false;
         let activePlaces = [];
 
         placesNames.forEach(p => {
-            let coreName = p;
-            if (aliasMap[p]) { coreName = aliasMap[p]; }
-            if (p === '巴蘭與埃及間') { coreName = '巴蘭與埃及間'; } // 特例攔截
-
-            if (coordsData[coreName]) {
-                activePlaces.push({ ...coordsData[coreName], name: coreName, originalName: p });
-                // 絕對判斷：只要事件中有任何一個地點的小圖(xs)座標是空的，就強制作為大圖事件
-                if (!coordsData[coreName].xs || coordsData[coreName].xs.trim() === "") {
-                    needLargeMap = true;
-                }
+            const core = p === "巴蘭與埃及間" ? "巴蘭與埃及間" : p;
+            if(coordsData[core]) {
+                activePlaces.push({ ...coordsData[core], name: core });
+                // 核心邏輯：只要有一個地點沒有小圖座標，就強制切換大圖
+                if (!coordsData[core].xs || coordsData[core].xs.trim() === "") needLarge = true;
             }
         });
 
         currentActivePlaces = activePlaces;
-        const targetMap = needLargeMap ? 'large' : 'small';
-        
+        const targetMap = needLarge ? 'large' : 'small';
+
         if (currentMap !== targetMap) {
             currentMap = targetMap;
-            const imgEl = document.getElementById('bg-map');
-            imgEl.src = targetMap === 'large' ? 'Abraham_1_Cute.png' : 'Abraham_2_Cute.png';
-            
-            imgEl.onload = () => {
-                renderMarkerLayer(targetMap, activePlaces);
-                flyTo(activePlaces, targetMap); 
+            mapImg.src = targetMap === 'large' ? 'Abraham_1_Cute.png' : 'Abraham_2_Cute.png';
+            mapImg.onload = () => {
+                syncOverlaySize();
+                renderMarkers(targetMap, activePlaces);
+                flyTo(activePlaces);
             };
         } else {
-            renderMarkerLayer(targetMap, activePlaces);
-            flyTo(activePlaces, targetMap); 
+            renderMarkers(targetMap, activePlaces);
+            flyTo(activePlaces);
         }
 
-        updateInfoBox(item, placesNames, activePlaces);
+        showInfo(item, activePlaces);
     }
 
-    function renderMarkerLayer(type, actives) {
+    function renderMarkers(type, actives) {
         const markerLayer = document.getElementById('marker-layer');
         const svgLayer = document.getElementById('svg-layer');
-        markerLayer.innerHTML = ''; 
+        markerLayer.innerHTML = '';
         svgLayer.innerHTML = '';
-        labelCollisionModel = {}; 
-
-        // 確保座標讀取完全對應：大圖拿 xl,yl ; 小圖拿 xs,ys
+        
         const X = type === 'large' ? 'xl' : 'xs';
         const Y = type === 'large' ? 'yl' : 'ys';
         const activeNames = actives.map(a => a.name);
 
-        if (actives.length >= 2) {
+        // 畫線
+        if(actives.length > 1) {
             for(let i=0; i<actives.length-1; i++) {
                 const p1 = actives[i], p2 = actives[i+1];
-                if (p1[X] && p2[X]) {
-                    const bgLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    bgLine.setAttribute('x1', p1[X]+'%'); bgLine.setAttribute('y1', p1[Y]+'%');
-                    bgLine.setAttribute('x2', p2[X]+'%'); bgLine.setAttribute('y2', p2[Y]+'%');
-                    bgLine.setAttribute('stroke', 'rgba(255,255,255,0.6)'); bgLine.setAttribute('stroke-width', '5');
-                    svgLayer.appendChild(bgLine);
-
+                if(p1[X] && p2[X]) {
                     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                     line.setAttribute('x1', p1[X]+'%'); line.setAttribute('y1', p1[Y]+'%');
                     line.setAttribute('x2', p2[X]+'%'); line.setAttribute('y2', p2[Y]+'%');
-                    line.setAttribute('stroke', '#c0392b'); 
-                    line.setAttribute('stroke-width', '2.5');
-                    line.setAttribute('stroke-dasharray', '6,4');
+                    line.setAttribute('stroke', '#e74c3c'); line.setAttribute('stroke-width', '3');
+                    line.setAttribute('stroke-dasharray', '5,5');
                     svgLayer.appendChild(line);
                 }
             }
         }
 
-        const allPlaces = Object.keys(coordsData);
-        allPlaces.sort((a,b) => {
-            const isAreaA = coordsData[a].type === 'Area';
-            const isAreaB = coordsData[b].type === 'Area';
-            const isActiveA = activeNames.includes(a);
-            const isActiveB = activeNames.includes(b);
-            if (isAreaA && !isAreaB) return -1;
-            if (!isAreaA && isAreaB) return 1;
-            if (isActiveA && !isActiveB) return 1;
-            if (!isActiveA && isActiveB) return -1;
-            return 0;
-        });
-
-        allPlaces.forEach(name => {
+        // 畫點與區域
+        Object.keys(coordsData).forEach(name => {
             const loc = coordsData[name];
-            // 嚴格攔截：如果當前地圖(X)的座標為空，就不渲染
-            if (!loc[X] || !loc[Y] || loc[X].trim() === "") return;
+            if(!loc[X] || loc[X].trim()==="") return;
 
             const isActive = activeNames.includes(name);
-            let renderType = loc.type;
-
-            // 智慧檢查：如果是 Area，且圓圈範圍超出了 0~100% 的圖框邊界，則降級為 Point (單點表述)
-            if (renderType === 'Area') {
-                const r = parseFloat(loc.radius || 10);
-                const xPct = parseFloat(loc[X]);
-                const yPct = parseFloat(loc[Y]);
-                if (xPct - r < 0 || xPct + r > 100 || yPct - r < 0 || yPct + r > 100) {
-                    renderType = 'Point';
-                }
-            }
-
-            if (renderType === 'Area') {
-                const div = document.createElement('div');
-                div.className = `marker-area ${isActive ? 'active' : ''}`;
-                div.style.width = (loc.radius * 2) + '%';
-                div.style.height = (loc.radius * 2) + '%';
-                div.style.left = loc[X] + '%';
-                div.style.top = loc[Y] + '%';
-                div.innerHTML = `<span class="marker-label">${name}</span>`;
-                markerLayer.appendChild(div);
+            
+            if(loc.type === 'Area') {
+                const area = document.createElement('div');
+                area.className = `marker-area ${isActive?'active':''}`;
+                area.style.cssText = `left:${loc[X]}%; top:${loc[Y]}%; width:${loc.radius*2}%; height:${loc.radius*2}%`;
+                area.innerHTML = `<span class="marker-label">${name}</span>`;
+                markerLayer.appendChild(area);
             } else {
-                const div = document.createElement('div');
-                div.textContent = name;
-                div.style.left = loc[X] + '%';
-                div.style.top = loc[Y] + '%';
-
-                div.onclick = (e) => {
-                    e.stopPropagation();
-                    flyTo([{...loc, name: name}], currentMap);
-                };
-
-                markerLayer.appendChild(div);
-
-                if (isActive) {
-                    div.className = 'marker active';
-                    registerCollision(getRect(div, loc[X], loc[Y]), name);
-                } else {
-                    div.className = 'marker low-priority';
-                    const rect = getRect(div, loc[X], loc[Y]);
-                    if (checkCollision(rect)) {
-                        div.className = 'marker marker-dot-only';
-                        div.textContent = ''; 
-                        div.title = name; 
-                    } else {
-                        registerCollision(rect, name);
-                    }
-                }
+                const m = document.createElement('div');
+                m.className = `marker ${isActive?'active':'low-priority'}`;
+                m.style.left = loc[X] + '%';
+                m.style.top = loc[Y] + '%';
+                m.textContent = name;
+                m.onclick = (e) => { e.stopPropagation(); flyTo([{...loc, name}]); };
+                markerLayer.appendChild(m);
             }
         });
     }
 
-    function getRect(el, xPct, yPct) {
-        const mapEl = document.getElementById('panzoom-element');
-        const xPx = (xPct / 100) * mapEl.clientWidth;
-        const yPx = (yPct / 100) * mapEl.clientHeight;
-        const widthEstimate = el.textContent.length * 12 + 16; 
-        const heightEstimate = 24;
-        return {
-            left: xPx - widthEstimate/2,
-            right: xPx + widthEstimate/2,
-            top: yPx - heightEstimate/2,
-            bottom: yPx + heightEstimate/2
-        };
-    }
-
-    function checkCollision(rect) {
-        const padding = 5; 
-        for (let name in labelCollisionModel) {
-            const other = labelCollisionModel[name];
-            if (!(rect.right + padding < other.left || 
-                  rect.left - padding > other.right || 
-                  rect.bottom + padding < other.top || 
-                  rect.top - padding > other.bottom)) {
-                return true; 
-            }
-        }
-        return false;
-    }
-
-    function registerCollision(rect, name) {
-        labelCollisionModel[name] = rect;
-    }
-
-    function flyTo(activePlaces, type) {
-        if (activePlaces.length === 0) return;
+    function flyTo(places) {
+        if(!places.length) return;
+        const X = currentMap === 'large' ? 'xl' : 'xs';
+        const Y = currentMap === 'large' ? 'yl' : 'ys';
         
-        const X = type === 'large' ? 'xl' : 'xs';
-        const Y = type === 'large' ? 'yl' : 'ys';
+        let sx=0, sy=0, count=0;
+        places.forEach(p => { if(p[X]){ sx+=parseFloat(p[X]); sy+=parseFloat(p[Y]); count++; }});
+        
+        const targetX = (sx/count/100) * mapImg.clientWidth;
+        const targetY = (sy/count/100) * mapImg.clientHeight;
+        
         const mapSection = document.getElementById('map-section');
-        const imgElement = document.getElementById('bg-map');
-
-        let sumX = 0, sumY = 0, validPoints = 0;
-        activePlaces.forEach(p => {
-            if (p[X] && p[X].toString().trim() !== "") { 
-                sumX += parseFloat(p[X]); 
-                sumY += parseFloat(p[Y]); 
-                validPoints++; 
-            }
-        });
+        const scale = pz.getScale();
         
-        if (validPoints === 0) return;
-        
-        const targetXPct = sumX / validPoints;
-        const targetYPct = sumY / validPoints;
-
-        // 精準取得底圖元素實際渲染的像素寬高
-        const imgWidth = imgElement.clientWidth;
-        const imgHeight = imgElement.clientHeight;
-
-        const xPx = (targetXPct / 100) * imgWidth;
-        const yPx = (targetYPct / 100) * imgHeight;
-
-        const viewportCenterX = mapSection.offsetWidth / 2;
-        const viewportCenterY = mapSection.offsetHeight / 2;
-
-        const currentScale = pz.getScale();
-        const panX = viewportCenterX - (xPx * currentScale);
-        const panY = viewportCenterY - (yPx * currentScale);
-
-        pz.pan(panX, panY, { animate: true });
+        pz.pan(
+            (mapSection.offsetWidth/2) - (targetX * scale),
+            (mapSection.offsetHeight/2) - (targetY * scale),
+            { animate: true }
+        );
     }
 
-    function resetMapAndFly() {
-        pz.reset();
-        setTimeout(() => {
-            if (currentActivePlaces.length > 0) {
-                flyTo(currentActivePlaces, currentMap);
-            }
-        }, 100);
-    }
-
-    function updateInfoBox(item, rawPlacesNames, activePlaces) {
+    function showInfo(item, actives) {
         const box = document.getElementById('info-box');
-        box.style.display = 'flex'; 
-        
-        document.getElementById('info-title').textContent = `${item.id}. ${item.event}`;
-        document.getElementById('info-time').textContent = item.time || "未記載";
-        document.getElementById('info-scripture').textContent = item.script || "無";
-        document.getElementById('info-note').textContent = item.note || "無補充紀錄。";
+        box.style.display = 'flex';
+        document.getElementById('info-title').textContent = item.event;
+        document.getElementById('info-scripture').textContent = item.script;
+        document.getElementById('info-note').textContent = item.note;
         
         const tagContainer = document.getElementById('info-loc-tags');
         tagContainer.innerHTML = '';
-        
-        rawPlacesNames.forEach(p => {
+        actives.forEach(p => {
             const span = document.createElement('span');
             span.className = 'loc-tag';
-            span.textContent = p;
-            
-            const matchedActive = activePlaces.find(ap => ap.originalName === p || ap.name === p || ap.name === aliasMap[p]);
-            
-            if (matchedActive) {
-                span.onclick = () => flyTo([matchedActive], currentMap);
-                span.title = "點擊以置中地圖";
-            } else {
-                span.classList.add('disabled');
-                span.title = "無座標資料";
-            }
+            span.textContent = p.name;
+            span.onclick = () => flyTo([p]);
             tagContainer.appendChild(span);
         });
     }
 
-    window.onload = loadData;
-</script>
+    function resetView() {
+        pz.reset();
+        syncOverlaySize();
+        if(currentActivePlaces.length) flyTo(currentActivePlaces);
+    }
 
+    window.onload = loadData;
+
+    // 資訊框拖動簡易版
+    const infoBox = document.getElementById("info-box");
+    const header = document.getElementById("info-header");
+    let isMoving = false, offset = [0,0];
+    header.onmousedown = (e) => { isMoving = true; offset = [infoBox.offsetLeft - e.clientX, infoBox.offsetTop - e.clientY]; };
+    document.onmousemove = (e) => { if(isMoving) { infoBox.style.left = (e.clientX + offset[0]) + 'px'; infoBox.style.top = (e.clientY + offset[1]) + 'px'; infoBox.style.right = 'auto'; } };
+    document.onmouseup = () => isMoving = false;
+
+</script>
 </body>
 </html>
