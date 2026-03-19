@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>亞伯拉罕史地互動地圖 V3.2 (精準定位版)</title>
+    <title>亞伯拉罕史地互動地圖 V4.0 (Cute Style)</title>
     <!-- 引入平移縮放套件 -->
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -14,15 +14,14 @@
         #app-container { display: flex; flex-direction: column; height: 100%; width: 100%; }
         @media (min-aspect-ratio: 1/1) { #app-container { flex-direction: row; } }
 
-        /* 地圖區塊 */
-        #map-section { flex: 1.5; position: relative; overflow: hidden; background: #333; cursor: grab; }
+        /* 地圖區塊 - 背景改為淺色沙地色以融合新地圖 */
+        #map-section { flex: 1.5; position: relative; overflow: hidden; background: #fdf5e6; cursor: grab; }
         #map-section:active { cursor: grabbing; }
-        #panzoom-element { position: relative; display: inline-block; transform-origin: 0 0; }
+        #panzoom-element { position: relative; display: inline-block; transform-origin: 0 0; width: 100%; height: 100%; }
         
-        #bg-map { display: block; max-height: 95vh; width: auto; pointer-events: none; }
+        #bg-map { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
         
         #svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
-        #geofeatures-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
         #marker-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
 
         /* 標籤樣式 (點) */
@@ -40,14 +39,6 @@
         .marker-area .marker-label { font-size: 14px; color: #8d6e32; font-weight: bold; text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff; opacity: 0.7; transition: opacity 0.3s; }
         .marker-area.active { background: rgba(197, 160, 89, 0.35); border-color: var(--gold); border-width: 2px; z-index: 10; }
         .marker-area.active .marker-label { opacity: 1; font-size: 16px; color: #b38022; }
-
-        /* 山川地貌樣式 */
-        .geofeature { position: absolute; transform: translate(-50%, -50%); font-weight: bold; pointer-events: none; }
-        .geofeature.sea { font-size: 18px; color: rgba(41, 128, 185, 0.6); font-style: italic; text-shadow: 1px 1px 2px rgba(255,255,255,0.8); z-index: 2; letter-spacing: 2px; }
-        .geofeature.river { font-size: 12px; color: rgba(52, 152, 219, 0.8); z-index: 3; transform: translate(-50%, -50%) rotate(-15deg); }
-        .geofeature.lake { font-size: 14px; color: rgba(52, 152, 219, 0.8); text-shadow: 1px 1px 0 #fff; z-index: 3; }
-        .geofeature.mountain { font-size: 14px; color: rgba(127, 140, 141, 0.8); text-shadow: 1px 1px 0 #fff; z-index: 2; }
-        .geofeature.desert { font-size: 16px; color: rgba(211, 84, 0, 0.4); font-style: italic; letter-spacing: 3px; z-index: 1; }
 
         /* 表格區塊 */
         #table-section { flex: 1; background: white; overflow-y: auto; border-top: 4px solid var(--gold); }
@@ -88,9 +79,8 @@
 <div id="app-container">
     <div id="map-section">
         <div id="panzoom-element">
-            <img src="Abraham_2.png" id="bg-map" alt="Base Map" onerror="this.src='Abraham_2.jpg'">
+            <img src="Abraham_2_Cute.png" id="bg-map" alt="Base Map" onerror="this.src='Abraham_2_Cute.jpg'">
             <svg id="svg-layer"></svg>
-            <div id="geofeatures-layer"></div>
             <div id="marker-layer"></div>
         </div>
 
@@ -130,21 +120,21 @@
 
 <script>
     let pz;
-    let eventData = [], coordsData = {}, geoData = [];
+    let eventData = [], coordsData = {};
     let currentMap = 'small';
     let labelCollisionModel = {};
     let currentActivePlaces = []; 
 
-    // 初始化 Panzoom
+    // 初始化 Panzoom，加入 contain: 'outside' 避免黑邊
     const elem = document.getElementById('panzoom-element');
     pz = Panzoom(elem, { 
         maxScale: 6, 
-        minScale: 0.3, 
+        minScale: 1, // Will be constrained by 'contain'
+        contain: 'outside',
         canvas: true,
         step: 0.2
     });
     
-    // 解決滾輪縮放與表格滾動的衝突
     const mapSection = document.getElementById('map-section');
     mapSection.addEventListener('wheel', (e) => {
         pz.zoomWithWheel(e);
@@ -195,18 +185,11 @@
     function toggleMinimize() { infoBox.classList.toggle('minimized'); }
     function closeInfoBox() { infoBox.style.display = 'none'; }
 
-    // 別名字典
+    // 別名字典 (如規則要求)
     const aliasMap = {
-        "沙微谷": "耶路撒冷",
-        "摩利亞山": "耶路撒冷", 
-        "歌珊地": "歌珊",
-        "雅博渡口": "毘努伊勒",
-        "幔利橡樹": "幔利",
-        "亞倫巴古": "伯特利下邊",
-        "迦累得": "基列山",
-        "埃及安城": "埃及安城",
-        "所多瑪": "西訂谷", 
-        "蛾摩拉": "西訂谷"
+        "伯特利下邊": "伯特利",
+        "瑣珥附近山洞": "瑣珥",
+        "沙微谷": "摩利亞山"
     };
 
     function parseCSV(text) {
@@ -227,23 +210,15 @@
 
     async function loadData() {
         try {
-            const [dataRes, coordsRes, geoRes] = await Promise.all([
+            const [dataRes, coordsRes] = await Promise.all([
                 fetch('data.csv').catch(() => null),
-                fetch('coords.csv').catch(() => null),
-                fetch('geofeatures.csv').catch(() => null)
+                fetch('coords.csv').catch(() => null)
             ]);
 
             if (coordsRes && coordsRes.ok) {
                 const text = await coordsRes.text();
                 parseCSV(text).slice(1).forEach(r => {
                     if(r[0]) coordsData[r[0]] = { xs: r[1], ys: r[2], xl: r[3], yl: r[4], type: r[5] || 'Point', radius: r[6] || 5 };
-                });
-            }
-
-            if (geoRes && geoRes.ok) {
-                const text = await geoRes.text();
-                parseCSV(text).slice(1).forEach(r => {
-                    if(r[0]) geoData.push({ name: r[0], type: r[1], xs: r[2], ys: r[3], xl: r[4], yl: r[5], priority: r[6] });
                 });
             }
 
@@ -260,7 +235,6 @@
                 });
             }
 
-            renderGeofeatures('small');
             renderMarkerLayer('small', []);
             
             document.getElementById('bg-map').onload = () => {
@@ -288,15 +262,14 @@
         placesNames.forEach(p => {
             let coreName = p;
             if (aliasMap[p]) { coreName = aliasMap[p]; }
-            else {
-                for (let key in coordsData) {
-                    if (p.includes(key)) { coreName = key; break; }
-                }
-            }
+            
+            // 處理兩個地點的特例: 巴蘭與埃及間
+            if (p === '巴蘭與埃及間') { coreName = '巴蘭與埃及間'; }
 
             if (coordsData[coreName]) {
                 activePlaces.push({ ...coordsData[coreName], name: coreName, originalName: p });
-                if ((!coordsData[coreName].xs || coordsData[coreName].xs.trim() === "") && coordsData[coreName].xl) {
+                // 決定地圖規則：只要有任何一個地點在小圖上沒有座標，整個事件就強制作為「大圖事件」
+                if (!coordsData[coreName].xs || coordsData[coreName].xs.trim() === "") {
                     needLargeMap = true;
                 }
             }
@@ -308,12 +281,11 @@
         if (currentMap !== targetMap) {
             currentMap = targetMap;
             const imgEl = document.getElementById('bg-map');
-            const fallbackExt = targetMap === 'large' ? 'Abraham_1.jpg' : 'Abraham_2.jpg';
+            const fallbackExt = targetMap === 'large' ? 'Abraham_1_Cute.jpg' : 'Abraham_2_Cute.jpg';
             imgEl.onerror = function() { this.src = fallbackExt; this.onerror = null; };
-            imgEl.src = targetMap === 'large' ? 'Abraham_1.png' : 'Abraham_2.png';
+            imgEl.src = targetMap === 'large' ? 'Abraham_1_Cute.png' : 'Abraham_2_Cute.png';
             
             imgEl.onload = () => {
-                renderGeofeatures(targetMap);
                 renderMarkerLayer(targetMap, activePlaces);
                 flyTo(activePlaces, targetMap); 
             };
@@ -323,24 +295,6 @@
         }
 
         updateInfoBox(item, placesNames, activePlaces);
-    }
-
-    function renderGeofeatures(type) {
-        const layer = document.getElementById('geofeatures-layer');
-        layer.innerHTML = '';
-        const X = type === 'large' ? 'xl' : 'xs';
-        const Y = type === 'large' ? 'yl' : 'ys';
-
-        geoData.forEach(geo => {
-            if (geo[X] && geo[Y]) {
-                const div = document.createElement('div');
-                div.className = `geofeature ${geo.type.toLowerCase()}`;
-                div.style.left = geo[X] + '%';
-                div.style.top = geo[Y] + '%';
-                div.textContent = geo.name;
-                layer.appendChild(div);
-            }
-        });
     }
 
     function renderMarkerLayer(type, actives) {
@@ -394,8 +348,20 @@
             if (!loc[X] || !loc[Y] || loc[X] === "") return;
 
             const isActive = activeNames.includes(name);
+            
+            // 邏輯: 如果是小圖，且Area的範圍超出邊界(0~100)或設定特定超出地點，改以Point渲染
+            let renderType = loc.type;
+            if (renderType === 'Area' && type === 'small') {
+                const r = parseFloat(loc.radius || 10);
+                const x = parseFloat(loc[X]);
+                const y = parseFloat(loc[Y]);
+                // 如果圓形範圍有任何一部分超出0~100%，降級為單點
+                if (x - r < 0 || x + r > 100 || y - r < 0 || y + r > 100) {
+                    renderType = 'Point';
+                }
+            }
 
-            if (loc.type === 'Area') {
+            if (renderType === 'Area') {
                 const div = document.createElement('div');
                 div.className = `marker-area ${isActive ? 'active' : ''}`;
                 div.style.width = (loc.radius * 2) + '%';
@@ -469,7 +435,6 @@
         labelCollisionModel[name] = rect;
     }
 
-    // ==== 核心修復：精準置中邏輯 ====
     function flyTo(activePlaces, type) {
         if (activePlaces.length === 0) return;
         
@@ -478,7 +443,6 @@
         const mapSection = document.getElementById('map-section');
         const imgElement = document.getElementById('bg-map');
 
-        // 1. 找出圖片座標的平均值 (Target Percentage)
         let sumX = 0, sumY = 0, validPoints = 0;
         activePlaces.forEach(p => {
             if (p[X]) { sumX += parseFloat(p[X]); sumY += parseFloat(p[Y]); validPoints++; }
@@ -489,22 +453,16 @@
         const targetXPct = sumX / validPoints;
         const targetYPct = sumY / validPoints;
 
-        // 2. 轉換為圖片上的實際像素座標
         const xPx = (targetXPct / 100) * imgElement.offsetWidth;
         const yPx = (targetYPct / 100) * imgElement.offsetHeight;
 
-        // 3. 取得視窗中心點 (顯示區域的 50%, 50%)
         const viewportCenterX = mapSection.offsetWidth / 2;
         const viewportCenterY = mapSection.offsetHeight / 2;
 
-        // 4. 計算平移量 (Pan)
-        // Panzoom 的 pan 是設定元素左上角 (transform-origin: 0 0) 的位移
-        // 公式: 視窗中心點 - (目標像素座標 * 當前縮放比例)
         const currentScale = pz.getScale();
         const panX = viewportCenterX - (xPx * currentScale);
         const panY = viewportCenterY - (yPx * currentScale);
 
-        // 執行平移
         pz.pan(panX, panY, { animate: true });
     }
 
@@ -534,7 +492,7 @@
             span.className = 'loc-tag';
             span.textContent = p;
             
-            const matchedActive = activePlaces.find(ap => ap.originalName === p || ap.name === p);
+            const matchedActive = activePlaces.find(ap => ap.originalName === p || ap.name === p || ap.name === aliasMap[p]);
             
             if (matchedActive) {
                 span.onclick = () => flyTo([matchedActive], currentMap);
