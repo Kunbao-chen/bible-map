@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>亞伯拉罕史地互動地圖 V4.0 (Cute Style)</title>
-    <!-- 引入平移縮放套件 -->
+    <title>亞伯拉罕史地互動地圖 V4.1</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --bg-dark: #2c3e50; --text-light: #ecf0f1; }
@@ -14,23 +13,25 @@
         #app-container { display: flex; flex-direction: column; height: 100%; width: 100%; }
         @media (min-aspect-ratio: 1/1) { #app-container { flex-direction: row; } }
 
-        /* 地圖區塊 - 背景改為淺色沙地色以融合新地圖 */
+        /* 地圖區塊 - 背景改為淺色沙地色融合新地圖 */
         #map-section { flex: 1.5; position: relative; overflow: hidden; background: #fdf5e6; cursor: grab; }
         #map-section:active { cursor: grabbing; }
-        #panzoom-element { position: relative; display: inline-block; transform-origin: 0 0; width: 100%; height: 100%; }
         
-        #bg-map { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+        /* 讓 panzoom 容器精準包裹圖片，消除底部空白 */
+        #panzoom-element { position: relative; display: inline-block; transform-origin: 0 0; line-height: 0; }
         
-        #svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
-        #marker-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        /* 圖片高度設限，寬度自適應，不裁切 */
+        #bg-map { display: block; max-height: 90vh; width: auto; pointer-events: none; border-radius: 4px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
+        
+        #svg-layer, #marker-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
 
         /* 標籤樣式 (點) */
-        .marker { position: absolute; transform: translate(-50%, -50%); padding: 4px 8px; border-radius: 20px; font-size: 12px; font-weight: bold; background: rgba(255,255,255,0.85); border: 1px solid #999; color: #444; white-space: nowrap; transition: all 0.2s; pointer-events: auto; cursor: pointer; z-index: 11; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .marker { position: absolute; transform: translate(-50%, -50%); padding: 4px 8px; border-radius: 20px; font-size: 12px; font-weight: bold; background: rgba(255,255,255,0.85); border: 1px solid #999; color: #444; white-space: nowrap; transition: all 0.2s; pointer-events: auto; cursor: pointer; z-index: 11; box-shadow: 0 1px 3px rgba(0,0,0,0.2); line-height: 1.2; }
         .marker:hover { background: #fff; border-color: var(--gold); transform: translate(-50%, -50%) scale(1.1); z-index: 100; opacity: 1 !important; box-shadow: 0 3px 8px rgba(0,0,0,0.3); }
         .marker.active { background: var(--gold); color: white; border: 2px solid white; font-size: 14px; z-index: 100; opacity: 1 !important; box-shadow: 0 0 15px rgba(0,0,0,0.5); transform: translate(-50%, -50%) scale(1.1); }
         .marker.low-priority { opacity: 0.8; font-size: 10px; z-index: 10; font-weight: normal; background: rgba(255,255,255,0.7); }
 
-        /* 隱藏標籤，只顯示點 */
+        /* 隱藏標籤，只顯示點 (防碰撞時使用) */
         .marker-dot-only { padding: 0; width: 8px; height: 8px; border-radius: 50%; background: #666; border: 1px solid white; color: transparent; overflow: hidden; opacity: 0.6; }
         .marker-dot-only:hover { opacity: 1; background: var(--gold); transform: translate(-50%, -50%) scale(1.5); }
 
@@ -79,7 +80,7 @@
 <div id="app-container">
     <div id="map-section">
         <div id="panzoom-element">
-            <img src="Abraham_2_Cute.png" id="bg-map" alt="Base Map" onerror="this.src='Abraham_2_Cute.jpg'">
+            <img src="Abraham_2_Cute.png" id="bg-map" alt="Base Map">
             <svg id="svg-layer"></svg>
             <div id="marker-layer"></div>
         </div>
@@ -99,7 +100,6 @@
     </div>
 </div>
 
-<!-- 可拖動資訊框 -->
 <div id="info-box">
     <div id="info-header">
         <span style="font-weight: bold; color: #555; font-size: 15px;">📍 事件詳情</span>
@@ -125,12 +125,11 @@
     let labelCollisionModel = {};
     let currentActivePlaces = []; 
 
-    // 初始化 Panzoom，加入 contain: 'outside' 避免黑邊
+    // 初始化 Panzoom (已移除 contain: outside，讓平移無死角)
     const elem = document.getElementById('panzoom-element');
     pz = Panzoom(elem, { 
         maxScale: 6, 
-        minScale: 1, // Will be constrained by 'contain'
-        contain: 'outside',
+        minScale: 0.5,
         canvas: true,
         step: 0.2
     });
@@ -141,13 +140,12 @@
         e.preventDefault(); 
     }, { passive: false });
 
-    // 資訊框拖曳防冒泡
+    // 資訊框拖曳邏輯
     const infoBox = document.getElementById("info-box");
     ['mousedown', 'touchstart', 'wheel', 'pointerdown', 'click', 'dblclick'].forEach(evt => {
         infoBox.addEventListener(evt, (e) => e.stopPropagation());
     });
 
-    // 資訊框拖曳邏輯 (邊界限制)
     let isDragging = false, dragStartX, dragStartY, initialLeft, initialTop;
     const header = document.getElementById("info-header");
     
@@ -162,16 +160,12 @@
     
     window.addEventListener('pointermove', (e) => {
         if (!isDragging) return;
-        
         let newLeft = initialLeft + e.clientX - dragStartX;
         let newTop = initialTop + e.clientY - dragStartY;
-        
         const maxLeft = window.innerWidth - infoBox.offsetWidth;
         const maxTop = window.innerHeight - infoBox.offsetHeight;
-        
         newLeft = Math.max(0, Math.min(newLeft, maxLeft));
         newTop = Math.max(0, Math.min(newTop, maxTop));
-
         infoBox.style.left = newLeft + "px";
         infoBox.style.top = newTop + "px";
         infoBox.style.right = 'auto'; 
@@ -185,7 +179,7 @@
     function toggleMinimize() { infoBox.classList.toggle('minimized'); }
     function closeInfoBox() { infoBox.style.display = 'none'; }
 
-    // 別名字典 (如規則要求)
+    // 別名字典
     const aliasMap = {
         "伯特利下邊": "伯特利",
         "瑣珥附近山洞": "瑣珥",
@@ -200,8 +194,8 @@
             if (c === '"' && inQuotes && next === '"') { currentCell += '"'; i++; }
             else if (c === '"') inQuotes = !inQuotes;
             else if (c === ',' && !inQuotes) { currentRow.push(currentCell.trim()); currentCell = ''; }
-            else if (c === '\n' && !inQuotes) { currentRow.push(currentCell.trim()); rows.push(currentRow); currentRow = []; currentCell = ''; }
-            else if (c !== '\r') currentCell += c;
+            else if (c === '\\n' && !inQuotes) { currentRow.push(currentCell.trim()); rows.push(currentRow); currentRow = []; currentCell = ''; }
+            else if (c !== '\\r') currentCell += c;
         }
         if (currentCell || currentRow.length > 0) currentRow.push(currentCell.trim());
         if (currentRow.length > 0) rows.push(currentRow);
@@ -236,10 +230,7 @@
             }
 
             renderMarkerLayer('small', []);
-            
-            document.getElementById('bg-map').onload = () => {
-                pz.reset();
-            };
+            document.getElementById('bg-map').onload = () => { pz.reset(); };
 
         } catch (error) {
             console.error("資料載入發生錯誤:", error);
@@ -262,13 +253,11 @@
         placesNames.forEach(p => {
             let coreName = p;
             if (aliasMap[p]) { coreName = aliasMap[p]; }
-            
-            // 處理兩個地點的特例: 巴蘭與埃及間
-            if (p === '巴蘭與埃及間') { coreName = '巴蘭與埃及間'; }
+            if (p === '巴蘭與埃及間') { coreName = '巴蘭與埃及間'; } // 特例攔截
 
             if (coordsData[coreName]) {
                 activePlaces.push({ ...coordsData[coreName], name: coreName, originalName: p });
-                // 決定地圖規則：只要有任何一個地點在小圖上沒有座標，整個事件就強制作為「大圖事件」
+                // 絕對判斷：只要事件中有任何一個地點的小圖(xs)座標是空的，就強制作為大圖事件
                 if (!coordsData[coreName].xs || coordsData[coreName].xs.trim() === "") {
                     needLargeMap = true;
                 }
@@ -281,8 +270,6 @@
         if (currentMap !== targetMap) {
             currentMap = targetMap;
             const imgEl = document.getElementById('bg-map');
-            const fallbackExt = targetMap === 'large' ? 'Abraham_1_Cute.jpg' : 'Abraham_2_Cute.jpg';
-            imgEl.onerror = function() { this.src = fallbackExt; this.onerror = null; };
             imgEl.src = targetMap === 'large' ? 'Abraham_1_Cute.png' : 'Abraham_2_Cute.png';
             
             imgEl.onload = () => {
@@ -304,6 +291,7 @@
         svgLayer.innerHTML = '';
         labelCollisionModel = {}; 
 
+        // 確保座標讀取完全對應：大圖拿 xl,yl ; 小圖拿 xs,ys
         const X = type === 'large' ? 'xl' : 'xs';
         const Y = type === 'large' ? 'yl' : 'ys';
         const activeNames = actives.map(a => a.name);
@@ -335,7 +323,6 @@
             const isAreaB = coordsData[b].type === 'Area';
             const isActiveA = activeNames.includes(a);
             const isActiveB = activeNames.includes(b);
-            
             if (isAreaA && !isAreaB) return -1;
             if (!isAreaA && isAreaB) return 1;
             if (isActiveA && !isActiveB) return 1;
@@ -345,18 +332,18 @@
 
         allPlaces.forEach(name => {
             const loc = coordsData[name];
-            if (!loc[X] || !loc[Y] || loc[X] === "") return;
+            // 嚴格攔截：如果當前地圖(X)的座標為空，就不渲染
+            if (!loc[X] || !loc[Y] || loc[X].trim() === "") return;
 
             const isActive = activeNames.includes(name);
-            
-            // 邏輯: 如果是小圖，且Area的範圍超出邊界(0~100)或設定特定超出地點，改以Point渲染
             let renderType = loc.type;
-            if (renderType === 'Area' && type === 'small') {
+
+            // 智慧檢查：如果是 Area，且圓圈範圍超出了 0~100% 的圖框邊界，則降級為 Point (單點表述)
+            if (renderType === 'Area') {
                 const r = parseFloat(loc.radius || 10);
-                const x = parseFloat(loc[X]);
-                const y = parseFloat(loc[Y]);
-                // 如果圓形範圍有任何一部分超出0~100%，降級為單點
-                if (x - r < 0 || x + r > 100 || y - r < 0 || y + r > 100) {
+                const xPct = parseFloat(loc[X]);
+                const yPct = parseFloat(loc[Y]);
+                if (xPct - r < 0 || xPct + r > 100 || yPct - r < 0 || yPct + r > 100) {
                     renderType = 'Point';
                 }
             }
@@ -389,7 +376,6 @@
                 } else {
                     div.className = 'marker low-priority';
                     const rect = getRect(div, loc[X], loc[Y]);
-                    
                     if (checkCollision(rect)) {
                         div.className = 'marker marker-dot-only';
                         div.textContent = ''; 
@@ -404,11 +390,10 @@
 
     function getRect(el, xPct, yPct) {
         const mapEl = document.getElementById('panzoom-element');
-        const xPx = (xPct / 100) * mapEl.offsetWidth;
-        const yPx = (yPct / 100) * mapEl.offsetHeight;
+        const xPx = (xPct / 100) * mapEl.clientWidth;
+        const yPx = (yPct / 100) * mapEl.clientHeight;
         const widthEstimate = el.textContent.length * 12 + 16; 
         const heightEstimate = 24;
-        
         return {
             left: xPx - widthEstimate/2,
             right: xPx + widthEstimate/2,
@@ -445,7 +430,11 @@
 
         let sumX = 0, sumY = 0, validPoints = 0;
         activePlaces.forEach(p => {
-            if (p[X]) { sumX += parseFloat(p[X]); sumY += parseFloat(p[Y]); validPoints++; }
+            if (p[X] && p[X].toString().trim() !== "") { 
+                sumX += parseFloat(p[X]); 
+                sumY += parseFloat(p[Y]); 
+                validPoints++; 
+            }
         });
         
         if (validPoints === 0) return;
@@ -453,8 +442,12 @@
         const targetXPct = sumX / validPoints;
         const targetYPct = sumY / validPoints;
 
-        const xPx = (targetXPct / 100) * imgElement.offsetWidth;
-        const yPx = (targetYPct / 100) * imgElement.offsetHeight;
+        // 精準取得底圖元素實際渲染的像素寬高
+        const imgWidth = imgElement.clientWidth;
+        const imgHeight = imgElement.clientHeight;
+
+        const xPx = (targetXPct / 100) * imgWidth;
+        const yPx = (targetYPct / 100) * imgHeight;
 
         const viewportCenterX = mapSection.offsetWidth / 2;
         const viewportCenterY = mapSection.offsetHeight / 2;
@@ -505,7 +498,6 @@
         });
     }
 
-    // 啟動
     window.onload = loadData;
 </script>
 
