@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>亞伯拉罕史地互動地圖 V4.8</title>
+    <title>亞伯拉罕史地互動地圖 V4.9</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --bg-dark: #2c3e50; --text-light: #ecf0f1; }
@@ -33,12 +33,12 @@
         tr.selected td { background: #fff9c4; font-weight: bold; border-left: 5px solid var(--gold); }
 
         /* 可拖動資訊框 */
-        #info-box { position: fixed; top: 20px; right: 20px; width: 340px; background: white; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); border-top: 6px solid var(--gold); z-index: 2000; display: none; flex-direction: column; user-select: none; }
-        #info-header { padding: 12px; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; border-radius: 8px 8px 0 0; cursor: move; border-bottom: 1px solid #eee; }
+        #info-box { position: fixed; top: 20px; right: 20px; width: 340px; background: white; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); border-top: 6px solid var(--gold); z-index: 2000; display: none; flex-direction: column; }
+        #info-header { padding: 12px; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; border-radius: 8px 8px 0 0; cursor: move; border-bottom: 1px solid #eee; user-select: none; }
         #info-body { padding: 15px; max-height: 70vh; overflow-y: auto; display: block; }
         
         .dist-badge { background: #e74c3c; color: white; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-bottom: 10px; display: inline-block; }
-        .path-info { background: #f1f2f6; padding: 8px; border-radius: 4px; font-size: 13px; margin-bottom: 10px; border-left: 4px solid #747d8c; }
+        .path-info { background: #f1f2f6; padding: 10px; border-radius: 4px; font-size: 13px; margin-bottom: 10px; border-left: 4px solid #747d8c; line-height: 1.5; }
         .time-info { font-size: 13px; color: #7f8c8d; margin-bottom: 8px; display: block; }
 
         .controls-map { position: absolute; bottom: 20px; left: 20px; z-index: 100; display: flex; flex-direction: column; gap: 8px; }
@@ -74,7 +74,7 @@
 
 <div id="info-box">
     <div id="info-header" onmousedown="dragStart(event)">
-        <span style="font-weight:bold; pointer-events:none;">📍 事件詳情</span>
+        <span style="font-weight:bold; pointer-events:none;">📍 事件詳情 (按住此處拖動)</span>
         <div>
             <button onclick="toggleMinimize()" class="btn-tool">－</button>
             <button onclick="closeInfoBox()" class="btn-tool">✕</button>
@@ -134,15 +134,16 @@
             tbody.innerHTML = ''; 
             eventData = [];
 
-            // 修正 CSV 解析邏輯，確保最後幾行也會被推入陣列
             const rows = parseCSV(dText);
+            console.log("CSV 總行數:", rows.length); // 除錯用
+
             for(let i=1; i < rows.length; i++) {
                 const r = rows[i];
-                if(r.length < 3 || !r[2]) continue; 
+                // 修正：只要這行有基本內容，就不跳過 (放寬判斷確保 87, 88 進場)
+                if(r.length < 2 || (!r[0] && !r[2])) continue; 
                 
                 const locRaw = r[3] || "";
-                // 提取地點（過濾掉括號內的距離）
-                const locs = locRaw.split('→').map(p => p.replace(/\(.*?\)/g, '').trim());
+                const locs = locRaw.split('→').map(p => p.replace(/\(.*?\)/g, '').trim()).filter(s => s !== "");
                 locs.forEach(p => { if(p) freqMap[p] = (freqMap[p] || 0) + 1; });
                 
                 const item = { id: r[0], time: r[1], event: r[2], loc: locRaw, script: r[4], note: r[5] };
@@ -154,6 +155,7 @@
                 tr.onclick = function() { selectEvent(currentIdx, this); };
                 tbody.appendChild(tr);
             }
+            console.log("成功載入事件數:", eventData.length);
 
             if (mapImg.complete) syncOverlaySize();
             else mapImg.onload = syncOverlaySize;
@@ -184,7 +186,7 @@
         tr.classList.add('selected');
         
         const item = eventData[idx];
-        const places = item.loc.split('→').map(p => p.replace(/\(.*?\)/g, '').trim());
+        const places = item.loc.split('→').map(p => p.replace(/\(.*?\)/g, '').trim()).filter(s => s !== "");
         
         let activePlaces = [], needLarge = false;
 
@@ -269,26 +271,26 @@
         document.getElementById('info-scripture').textContent = item.script;
         document.getElementById('info-note').textContent = item.note || '無備註資訊';
 
-        // 1. 解析路徑與距離
         const pathArea = document.getElementById('info-path-area');
         const distArea = document.getElementById('info-dist-area');
         
-        // 提取公里數
         const distMatch = item.loc.match(/\(([^)]+)\)/);
         const distText = distMatch ? distMatch[1] : null;
         
-        // 提取純路徑文字
-        const pureLocs = item.loc.replace(/\(.*?\)/g, '').split('→').map(s => s.trim());
-        if(pureLocs.length > 1) {
+        // 解析起點與終點
+        const pureLocs = item.loc.replace(/\(.*?\)/g, '').split('→').map(s => s.trim()).filter(s => s !== "");
+        if(pureLocs.length >= 2) {
             pathArea.innerHTML = `🏁 <strong>起點：</strong>${pureLocs[0]}<br>🎯 <strong>終點：</strong>${pureLocs[pureLocs.length-1]}`;
             pathArea.style.display = 'block';
-        } else {
+        } else if (pureLocs.length === 1) {
             pathArea.innerHTML = `📍 <strong>地點：</strong>${pureLocs[0]}`;
+            pathArea.style.display = 'block';
+        } else {
+            pathArea.style.display = 'none';
         }
         
-        distArea.innerHTML = distText ? `<span class="dist-badge">📏 總距：${distText}</span>` : '';
+        distArea.innerHTML = distText ? `<span class="dist-badge">📏 總移動距離：${distText}</span>` : '';
 
-        // 2. 標籤區域
         const tags = document.getElementById('info-loc-tags');
         tags.innerHTML = '';
         actives.forEach(p => {
@@ -300,38 +302,53 @@
         });
     }
 
-    // --- 拖動與介面控制 ---
+    // --- 強化拖動功能 ---
     function dragStart(e) {
         isDragging = true;
-        offset.x = e.clientX - infoBox.offsetLeft;
-        offset.y = e.clientY - infoBox.offsetTop;
+        // 取得當前位置與滑鼠點擊位置的偏差
+        const rect = infoBox.getBoundingClientRect();
+        offset.x = e.clientX - rect.left;
+        offset.y = e.clientY - rect.top;
+        
+        // 重要：開始拖動時，將 CSS 的 right/bottom 屬性移除，避免 left/top 失效
+        infoBox.style.right = 'auto';
+        infoBox.style.bottom = 'auto';
+        
         document.addEventListener('mousemove', dragMove);
         document.addEventListener('mouseup', dragEnd);
     }
+    
     function dragMove(e) {
         if (!isDragging) return;
+        e.preventDefault(); // 防止拖動時選取到背景文字
         infoBox.style.left = (e.clientX - offset.x) + 'px';
         infoBox.style.top = (e.clientY - offset.y) + 'px';
-        infoBox.style.right = 'auto'; // 取消初始的右對齊
     }
-    function dragEnd() { isDragging = false; }
+    
+    function dragEnd() { 
+        isDragging = false; 
+        document.removeEventListener('mousemove', dragMove);
+        document.removeEventListener('mouseup', dragEnd);
+    }
     
     function toggleMinimize() {
         const body = document.getElementById('info-body');
         body.style.display = body.style.display === 'none' ? 'block' : 'none';
     }
-    function closeInfoBox() { infoBox.style.display = 'none'; }
+    function closeInfoBox() { document.getElementById('info-box').style.display = 'none'; }
     function resetView() { pz.reset(); if(currentActivePlaces.length) flyTo(currentActivePlaces); }
 
+    // --- 強化 CSV 解析器，支援多種換行與結尾處理 ---
     function parseCSV(t) {
+        const cleanT = t.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
         let r=[], c=[], cell='', q=false;
-        for(let i=0; i<t.length; i++){
-            let char=t[i];
-            if(char==='"' && t[i+1]==='"'){ cell+='"'; i++; }
+        for(let i=0; i<cleanT.length; i++){
+            let char=cleanT[i];
+            if(char==='"' && cleanT[i+1]==='"'){ cell+='"'; i++; }
             else if(char==='"'){ q=!q; }
             else if(char===',' && !q){ c.push(cell.trim()); cell=''; }
             else if(char==='\n' && !q){ c.push(cell.trim()); r.push(c); c=[]; cell=''; }
-            else if(char!=='\r') cell+=char;
+            else cell+=char;
         }
         if(cell || c.length) { c.push(cell.trim()); r.push(c); }
         return r;
