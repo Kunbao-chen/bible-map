@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>亞伯拉罕史地互動地圖 V4.5</title>
+    <title>亞伯拉罕史地互動地圖 V4.6</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --bg-dark: #2c3e50; --text-light: #ecf0f1; }
@@ -15,21 +15,18 @@
 
         #map-section { flex: 1.5; position: relative; overflow: hidden; background: #222; cursor: grab; }
         #panzoom-element { position: relative; display: inline-block; transform-origin: 0 0; }
-        #bg-map { display: block; pointer-events: none; visibility: hidden; } /* 初始隱藏避免跳動 */
+        #bg-map { display: block; pointer-events: none; visibility: hidden; }
         
         #overlay-container { position: absolute; pointer-events: none; top: 0; left: 0; }
         #svg-layer, #marker-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-        /* 標籤基礎樣式 */
         .marker { position: absolute; transform: translate(-50%, -50%); padding: 4px 10px; border-radius: 20px; font-size: 13px; font-weight: bold; background: rgba(255,255,255,0.95); border: 1px solid #777; color: #333; white-space: nowrap; transition: opacity 0.2s; pointer-events: auto; cursor: pointer; z-index: 50; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
         .marker.active { background: var(--gold); color: white; border: 2px solid white; font-size: 15px; z-index: 100; box-shadow: 0 0 15px rgba(197, 160, 89, 0.8); }
         .marker.low-priority { opacity: 0.85; font-size: 11px; font-weight: normal; }
         
-        /* 衝突隱藏模式：直接變小圓點 */
         .marker-dot-only { padding: 0; width: 10px; height: 10px; border-radius: 50%; background: #888; border: 1px solid white; color: transparent !important; overflow: hidden; z-index: 10; opacity: 0.6; }
         .marker-dot-only:hover { opacity: 1; background: var(--gold); transform: translate(-50%, -50%) scale(1.5); color: transparent !important; }
 
-        /* 區域背景圈圈 (不含文字) */
         .marker-area-circle { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(197, 160, 89, 0.2); border: 3px dashed rgba(255, 255, 255, 0.6); pointer-events: none; z-index: 5; aspect-ratio: 1/1; }
 
         #table-section { flex: 1; background: white; overflow-y: auto; border-top: 5px solid var(--gold); }
@@ -39,7 +36,6 @@
         td { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
         tr.selected td { background: #fff9c4; font-weight: bold; border-left: 5px solid var(--gold); }
 
-        /* 資訊框 UI */
         #info-box { position: fixed; top: 20px; right: 20px; width: 300px; background: white; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-top: 6px solid var(--gold); z-index: 999; display: none; flex-direction: column; }
         #info-header { padding: 10px; background: #f4f4f4; display: flex; justify-content: space-between; align-items: center; border-radius: 8px 8px 0 0; cursor: grab; }
         #info-body { padding: 15px; max-height: 60vh; overflow-y: auto; }
@@ -47,6 +43,9 @@
 
         .controls-map { position: absolute; bottom: 20px; left: 20px; z-index: 100; display: flex; flex-direction: column; gap: 8px; }
         .controls-map button { width: 45px; height: 45px; border-radius: 8px; border: 1px solid #ccc; background: white; cursor: pointer; font-size: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        
+        /* 公里數標籤樣式 */
+        .dist-badge { background: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-left: 8px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -81,30 +80,44 @@
     </div>
     <div id="info-body">
         <h3 id="info-title" style="margin:0;color:var(--gold);"></h3>
-        <p id="info-loc-tags"></p>
+        <p id="info-dist-display" style="margin: 8px 0;"></p> <p id="info-loc-tags"></p>
         <p>經文：<span id="info-scripture" style="color:#2980b9;"></span></p>
         <p id="info-note" style="font-size:13px; color:#666;"></p>
     </div>
 </div>
 
 <script>
-    let pz, eventData = [], coordsData = {}, freqMap = {};
+    let pz, eventData = [], freqMap = {};
+    // 分開儲存兩份座標數據
+    let coordsSmall = {}, coordsLarge = {};
     let currentMap = 'small', currentActivePlaces = [];
     const mapImg = document.getElementById('bg-map');
     const overlay = document.getElementById('overlay-container');
     const elem = document.getElementById('panzoom-element');
 
-    // 初始化 Panzoom
     pz = Panzoom(elem, { maxScale: 5, minScale: 0.1, contain: 'outside', canvas: true });
     document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
 
     async function loadData() {
-        const [cRes, dRes] = await Promise.all([fetch('coords.csv'), fetch('data.csv')]);
-        const cText = await cRes.text();
+        // 修改點 1：載入大圖與小圖兩份 CSV
+        const [sRes, lRes, dRes] = await Promise.all([
+            fetch('小圖座標.csv'), 
+            fetch('大圖座標.csv'), 
+            fetch('data.csv')
+        ]);
+        
+        const sText = await sRes.text();
+        const lText = await lRes.text();
         const dText = await dRes.text();
 
-        parseCSV(cText).slice(1).forEach(r => {
-            if(r[0]) coordsData[r[0]] = { xs: r[1], ys: r[2], xl: r[3], yl: r[4], type: r[5]||'Point', radius: r[6]||5 };
+        // 解析小圖座標
+        parseCSV(sText).slice(1).forEach(r => {
+            if(r[0]) coordsSmall[r[0]] = { x: r[1], y: r[2], type: r[3]||'Point', radius: r[4]||5 };
+        });
+
+        // 解析大圖座標
+        parseCSV(lText).slice(1).forEach(r => {
+            if(r[0]) coordsLarge[r[0]] = { x: r[1], y: r[2], type: r[3]||'Point', radius: r[4]||5 };
         });
 
         const tbody = document.getElementById('table-body');
@@ -127,12 +140,11 @@
         };
     }
 
-    // 關鍵修正：確保圖片加載完成才進行座標計算
     async function changeMapImage(target) {
         if (currentMap === target) return;
         return new Promise(resolve => {
             currentMap = target;
-            mapImg.style.visibility = 'hidden'; // 防止閃爍
+            mapImg.style.visibility = 'hidden';
             mapImg.src = target === 'large' ? 'Abraham_1_Cute.png' : 'Abraham_2_Cute.png';
             mapImg.onload = () => {
                 syncOverlaySize();
@@ -154,12 +166,16 @@
         
         const item = eventData[idx];
         const places = item.loc.split('→').map(p => p.replace(/\(.*?\)/g, '').trim());
+        
         let activePlaces = [], needLarge = false;
 
+        // 修改點 2：根據地點是否存在於小圖來判定是否切換大圖
         places.forEach(p => {
-            if(coordsData[p]) {
-                activePlaces.push({ ...coordsData[p], name: p });
-                if (!coordsData[p].xs) needLarge = true;
+            if (coordsSmall[p]) {
+                activePlaces.push({ ...coordsSmall[p], name: p });
+            } else if (coordsLarge[p]) {
+                activePlaces.push({ ...coordsLarge[p], name: p });
+                needLarge = true; // 只要有一個點只在大圖有，就切換大圖
             }
         });
 
@@ -175,24 +191,27 @@
         const svgLayer = document.getElementById('svg-layer');
         markerLayer.innerHTML = ''; svgLayer.innerHTML = '';
         
-        const X = type === 'large' ? 'xl' : 'xs', Y = type === 'large' ? 'yl' : 'ys';
+        // 根據目前地圖類型選擇數據源
+        const currentCoords = type === 'large' ? coordsLarge : coordsSmall;
         const activeNames = actives.map(a => a.name);
 
         // 畫路徑線
         if(actives.length > 1) {
             actives.forEach((p, i) => {
-                if(i < actives.length-1 && actives[i+1][X]) {
+                // 確保目前地圖模式下這兩個點都有座標才畫線
+                if(i < actives.length-1 && currentCoords[actives[i].name] && currentCoords[actives[i+1].name]) {
+                    const p1 = currentCoords[actives[i].name];
+                    const p2 = currentCoords[actives[i+1].name];
                     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    line.setAttribute('x1', p[X]+'%'); line.setAttribute('y1', p[Y]+'%');
-                    line.setAttribute('x2', actives[i+1][X]+'%'); line.setAttribute('y2', actives[i+1][Y]+'%');
+                    line.setAttribute('x1', p1.x+'%'); line.setAttribute('y1', p1.y+'%');
+                    line.setAttribute('x2', p2.x+'%'); line.setAttribute('y2', p2.y+'%');
                     line.setAttribute('stroke', '#e74c3c'); line.setAttribute('stroke-width', '4'); line.setAttribute('stroke-dasharray', '8,5');
                     svgLayer.appendChild(line);
                 }
             });
         }
 
-        // 排序：Active > 頻率高 > 低
-        const sortedKeys = Object.keys(coordsData).sort((a,b) => {
+        const sortedKeys = Object.keys(currentCoords).sort((a,b) => {
             if (activeNames.includes(a) && !activeNames.includes(b)) return -1;
             if (!activeNames.includes(a) && activeNames.includes(b)) return 1;
             return (freqMap[b]||0) - (freqMap[a]||0);
@@ -200,26 +219,22 @@
 
         let placedRects = [];
         sortedKeys.forEach(name => {
-            const loc = coordsData[name];
-            if(!loc[X]) return;
-
+            const loc = currentCoords[name];
             const isActive = activeNames.includes(name);
             
-            // 如果是 Area 且 active，畫出背景圓圈
             if (loc.type === 'Area' && isActive) {
                 const circle = document.createElement('div');
                 circle.className = 'marker-area-circle';
-                circle.style.cssText = `left:${loc[X]}%; top:${loc[Y]}%; width:${loc.radius}%;`;
+                circle.style.cssText = `left:${loc.x}%; top:${loc.y}%; width:${loc.radius}%;`;
                 markerLayer.appendChild(circle);
             }
 
-            // 所有地名(含Area名)都作為 Marker 進入碰撞偵測
             const m = document.createElement('div');
-            m.style.left = loc[X] + '%'; m.style.top = loc[Y] + '%';
+            m.style.left = loc.x + '%'; m.style.top = loc.y + '%';
             m.textContent = name;
             m.onclick = () => flyTo([{...loc, name}]);
 
-            const rect = getRect(loc[X], loc[Y], name.length);
+            const rect = getRect(loc.x, loc.y, name.length);
             const isColliding = placedRects.some(p => checkCollision(rect, p));
 
             if (isActive) {
@@ -231,7 +246,6 @@
                 markerLayer.appendChild(m);
                 placedRects.push(rect);
             } else {
-                // 碰撞了：縮小為點，直接隱藏地名
                 m.className = 'marker marker-dot-only';
                 m.title = name;
                 markerLayer.appendChild(m);
@@ -247,9 +261,12 @@
     function checkCollision(a, b) { return !(a.r < b.l || a.l > b.r || a.b < b.t || a.t > b.m); }
 
     function flyTo(pts) {
-        const X = currentMap === 'large' ? 'xl' : 'xs', Y = currentMap === 'large' ? 'yl' : 'ys';
+        const currentCoords = currentMap === 'large' ? coordsLarge : coordsSmall;
         let sx=0, sy=0, c=0;
-        pts.forEach(p => { if(p[X]){ sx+=parseFloat(p[X]); sy+=parseFloat(p[Y]); c++; }});
+        pts.forEach(p => { 
+            const coord = currentCoords[p.name];
+            if(coord){ sx+=parseFloat(coord.x); sy+=parseFloat(coord.y); c++; }
+        });
         if(!c) return;
         const tx = (sx/c/100)*overlay.offsetWidth, ty = (sy/c/100)*overlay.offsetHeight;
         const sc = pz.getScale();
@@ -262,6 +279,16 @@
         document.getElementById('info-title').textContent = item.event;
         document.getElementById('info-scripture').textContent = item.script;
         document.getElementById('info-note').textContent = item.note;
+
+        // 修改點 3：自動從地點字串提取公里數
+        const distDisplay = document.getElementById('info-dist-display');
+        const distMatch = item.loc.match(/\(([^)]+)\)/); // 抓取括號內的內容
+        if (distMatch) {
+            distDisplay.innerHTML = `<span class="dist-badge">移動距離：${distMatch[1]}</span>`;
+        } else {
+            distDisplay.innerHTML = '';
+        }
+
         const tags = document.getElementById('info-loc-tags');
         tags.innerHTML = '';
         actives.forEach(p => {
