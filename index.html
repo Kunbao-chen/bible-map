@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V7.2</title>
+    <title>亞伯拉罕史地互動地圖 V8.1</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --dark: #2c3e50; --handle-bg: #ddd; }
@@ -19,11 +19,12 @@
 
         /* 地圖區 */
         #map-section { flex: 1; position: relative; overflow: hidden; background: #1a1a1a; }
-        #panzoom-element { display: inline-block; transform-origin: 0 0; }
+        /* 關鍵修正：origin 必須在左上角，pan 的計算才會跟圖片百分比完全線性對齊 */
+        #panzoom-element { display: inline-block; transform-origin: 0 0 !important; }
         #bg-map { display: block; max-width: none; user-select: none; -webkit-user-drag: none; }
         
         .map-controls { position: absolute; left: 15px; bottom: 30px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
-        .map-controls button { width: 44px; height: 44px; border-radius: 8px; border: 1px solid #999; background: rgba(255,255,255,0.9); font-size: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .map-controls button { width: 44px; height: 44px; border-radius: 8px; border: 1px solid #999; background: rgba(255,255,255,0.9); font-size: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); cursor: pointer; }
 
         /* 主拉桿 */
         #resizer-main { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; border: 1px solid #bbb; }
@@ -42,14 +43,13 @@
             cursor: pointer;
         }
         #info-body { padding: 15px; overflow-y: auto; flex: 1; font-size: 15px; line-height: 1.6; border-bottom: 1px solid #eee; }
-        .info-title { color: var(--gold); margin: 0 0 5px 0; font-size: 19px; font-weight: bold; }
         
         /* 內部拉桿 */
         #resizer-inner { height: 10px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; flex-shrink: 0; }
         #resizer-inner::after { content: "━"; color: #999; font-size: 10px; }
 
         /* 列表區 */
-        #list-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        #list-container { flex: 1; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #f8f8f8; position: sticky; top: 0; padding: 12px; text-align: left; z-index: 10; border-bottom: 1px solid #ddd; }
         td { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; }
@@ -91,7 +91,7 @@
             </div>
             <div id="info-body">
                 <div id="info-time" style="color:#888; font-size:12px;"></div>
-                <h3 id="info-title" class="info-title"></h3>
+                <h3 id="info-title" style="color:var(--gold); margin:5px 0;"></h3>
                 <div id="info-path" style="background:#f9f9f9; padding:8px; border-radius:4px; margin-bottom:10px; font-size:14px; font-weight:bold;"></div>
                 <p><strong>經文：</strong><span id="info-script" style="color:#2980b9;"></span></p>
                 <div id="info-note" style="border-top:1px solid #eee; padding-top:10px; font-size:14px; color:#555;"></div>
@@ -111,103 +111,72 @@
 
 <script>
     let pz, eventData = [], coordsSmall = {}, coordsLarge = {};
-    let currentMap = 'small', currentEventIdx = -1;
-    let locationFrequency = {};
+    let currentMap = 'small', currentEventIdx = -1, locationFrequency = {};
 
-    // === 核心修正：精確物理中心對齊演算法 ===
+    // === 核心修正：FlyTo 極限對齊 (不露黑邊) ===
     function flyTo(pts) {
         if (!pts.length) return;
         const img = document.getElementById('bg-map');
         const container = document.getElementById('map-section');
         
-        // 1. 取得圖片的「基礎 CSS 寬高」（不受 Transform 縮放影響的原始渲染大小）
-        const baseW = img.offsetWidth;
-        const baseH = img.offsetHeight;
+        // 抓取精確的原始尺寸
+        const baseW = img.naturalWidth || img.offsetWidth;
+        const baseH = img.naturalHeight || img.offsetHeight;
 
-        // 2. 計算目標點的百分比平均值 (0~1 之間)
-        let totalX = 0, totalY = 0;
-        pts.forEach(p => { 
-            totalX += parseFloat(p.x); 
-            totalY += parseFloat(p.y); 
-        });
-        const pctX = (totalX / pts.length) / 100;
-        const pctY = (totalY / pts.length) / 100;
+        let tx = 0, ty = 0;
+        pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
+        const pctX = (tx / pts.length) / 100;
+        const pctY = (ty / pts.length) / 100;
 
-        // 3. 抓取當下的縮放倍率 (例如 0.3)
         const scale = pz.getScale();
+        
+        // 公式：(容器寬度/2) - (點位百分比 * 圖片原始寬 * 當前倍率)
+        // 因為 origin 是 0 0，所以這個物理像素位移是絕對精確的
+        const targetPanX = (container.clientWidth / 2) - (pctX * baseW * scale);
+        const targetPanY = (container.clientHeight / 2) - (pctY * baseH * scale);
 
-        // 4. 對齊公式：(容器寬度/2) - (目標點在當前倍率下的絕對像素位置)
-        // 這會補償縮放造成的位移，將目標推向容器的正中心
-        const targetPanX = (container.offsetWidth / 2) - (pctX * baseW * scale);
-        const targetPanY = (container.offsetHeight / 2) - (pctY * baseH * scale);
-
+        // 執行位移。Panzoom 設有 contain: 'outside'，它會自動把 targetPanX 
+        // 限制在「不露出黑邊」的極限值內。
         pz.pan(targetPanX, targetPanY, { animate: true });
     }
 
-    // === 資訊區縮折功能 ===
+    // === 按鈕功能：資訊區收折 ===
     function toggleInfo() {
-        const body = document.getElementById('info-body');
-        const arrow = document.getElementById('info-arrow');
-        const resizer = document.getElementById('resizer-inner');
-        const area = document.getElementById('info-area');
-        
+        const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow');
+        const resizer = document.getElementById('resizer-inner'), area = document.getElementById('info-area');
         if (body.style.display === 'none') {
-            body.style.display = 'block';
-            resizer.style.display = 'flex';
-            area.style.flex = "0 0 45%";
-            arrow.innerText = '▼';
+            body.style.display = 'block'; resizer.style.display = 'flex';
+            area.style.flex = "0 0 45%"; arrow.innerText = '▼';
         } else {
-            body.style.display = 'none';
-            resizer.style.display = 'none';
-            area.style.flex = "0 0 44px";
-            arrow.innerText = '▲';
+            body.style.display = 'none'; resizer.style.display = 'none';
+            area.style.flex = "0 0 44px"; arrow.innerText = '▲';
         }
     }
 
-    // === 雙重拉桿邏輯 ===
-    const resizerMain = document.getElementById('resizer-main'), sidePanel = document.getElementById('side-panel');
-    resizerMain.addEventListener('mousedown', initDragMain);
-    resizerMain.addEventListener('touchstart', initDragMain, {passive:false});
-
-    function initDragMain(e) {
-        e.preventDefault();
-        const move = (m) => {
-            const x = m.clientX || m.touches[0].clientX, y = m.clientY || m.touches[0].clientY;
-            if (window.innerHeight > window.innerWidth) {
-                sidePanel.style.width = '100%';
-                sidePanel.style.flex = `0 0 ${window.innerHeight - y}px`;
-            } else {
-                sidePanel.style.flex = 'none';
-                sidePanel.style.width = `${window.innerWidth - x}px`;
-            }
+    // === 拉桿與資料載入邏輯 (沿用穩定版) ===
+    function initResizers() {
+        const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
+        const dragM = (e) => {
+            const x = e.clientX || e.touches[0].clientX, y = e.clientY || e.touches[0].clientY;
+            if (window.innerHeight > window.innerWidth) side.style.flex = `0 0 ${window.innerHeight - y}px`;
+            else side.style.width = `${window.innerWidth - x}px`;
             syncOverlay();
         };
-        const end = () => { window.removeEventListener('mousemove', move); window.removeEventListener('touchmove', move); };
-        window.addEventListener('mousemove', move); window.addEventListener('touchmove', move);
-        window.addEventListener('mouseup', end); window.addEventListener('touchend', end);
-    }
+        rMain.onmousedown = () => { window.onmousemove = dragM; window.onmouseup = () => window.onmousemove = null; };
+        rMain.ontouchmove = dragM;
 
-    const resizerInner = document.getElementById('resizer-inner'), infoArea = document.getElementById('info-area');
-    resizerInner.addEventListener('mousedown', initDragInner);
-    resizerInner.addEventListener('touchstart', initDragInner, {passive:false});
-
-    function initDragInner(e) {
-        e.preventDefault();
-        const startY = e.clientY || e.touches[0].clientY, startH = infoArea.offsetHeight;
-        const move = (m) => {
-            const curY = m.clientY || m.touches[0].clientY;
-            infoArea.style.flex = `0 0 ${Math.max(80, startH + (curY - startY))}px`;
+        const rInner = document.getElementById('resizer-inner'), area = document.getElementById('info-area');
+        const dragI = (e) => {
+            const y = e.clientY || e.touches[0].clientY;
+            area.style.flex = `0 0 ${Math.max(80, y - area.getBoundingClientRect().top)}px`;
         };
-        const end = () => { window.removeEventListener('mousemove', move); window.removeEventListener('touchmove', move); };
-        window.addEventListener('mousemove', move); window.addEventListener('touchmove', move);
-        window.addEventListener('mouseup', end); window.addEventListener('touchend', end);
+        rInner.onmousedown = () => { window.onmousemove = dragI; window.onmouseup = () => window.onmousemove = null; };
+        rInner.ontouchmove = dragI;
     }
 
-    // === 標籤渲染 (包含無效資料過濾) ===
     function renderMarkers(db, actives) {
         const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer');
         ml.innerHTML = ''; sl.innerHTML = '';
-        
         if (actives.length > 1) {
             for (let i = 0; i < actives.length - 1; i++) {
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -217,36 +186,24 @@
                 sl.appendChild(line);
             }
         }
-
         Object.keys(db).forEach(name => {
             const data = db[name];
-            // 防止左上角出現奇怪標籤：過濾無座標或 x=0 的無效點
             if (!name || name === 'undefined' || !data.x || isNaN(data.x) || parseFloat(data.x) === 0) return;
-
             const isA = actives.some(a => a.n === name);
             const div = document.createElement('div');
             div.className = isA ? 'marker highlight' : 'marker';
-            div.style.left = data.x + '%';
-            div.style.top = data.y + '%';
-            div.innerText = name;
-            ml.appendChild(div);
+            div.style.left = data.x + '%'; div.style.top = data.y + '%';
+            div.innerText = name; ml.appendChild(div);
         });
-
         setTimeout(() => {
             const highlights = Array.from(document.querySelectorAll('.marker.highlight'));
             const normal = Array.from(document.querySelectorAll('.marker:not(.highlight)'));
             const occupied = highlights.map(m => m.getBoundingClientRect());
-            
-            normal.sort((a,b) => (locationFrequency[b.innerText]||0) - (locationFrequency[a.innerText]||0))
-                  .forEach(m => {
-                        const r = m.getBoundingClientRect();
-                        if (occupied.some(o => !(r.right<o.left || r.left>o.right || r.bottom<o.top || r.top>o.bottom))) {
-                            m.style.display = 'none';
-                        } else {
-                            m.style.visibility = 'visible';
-                            occupied.push(r);
-                        }
-                  });
+            normal.sort((a,b) => (locationFrequency[b.innerText]||0) - (locationFrequency[a.innerText]||0)).forEach(m => {
+                const r = m.getBoundingClientRect();
+                if (occupied.some(o => !(r.right<o.left || r.left>o.right || r.bottom<o.top || r.top>o.bottom))) m.style.display = 'none';
+                else { m.style.visibility = 'visible'; occupied.push(r); }
+            });
         }, 100);
     }
 
@@ -254,23 +211,19 @@
         currentEventIdx = idx;
         document.querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
         tr.classList.add('active-row');
-        
         const item = eventData[idx];
         const needLarge = item.loc.split('→').some(p => {
             const n = p.replace(/\(.*?\)/g, '').trim();
             return !!findInDB(n, coordsLarge) && !findInDB(n, coordsSmall);
         });
-
         if (currentMap !== (needLarge ? 'large' : 'small')) {
             currentMap = needLarge ? 'large' : 'small';
             document.getElementById('bg-map').src = needLarge ? 'Abraham_1_Cute.png' : 'Abraham_2_Cute.png';
             await new Promise(res => document.getElementById('bg-map').onload = res);
             syncOverlay();
         }
-
         const db = currentMap === 'large' ? coordsLarge : coordsSmall;
         const actives = item.loc.split('→').map(p => findInDB(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p);
-
         renderMarkers(db, actives);
         if (actives.length) flyTo(actives);
         updateInfoPanel(item);
@@ -279,8 +232,7 @@
     function syncOverlay() {
         const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container');
         if(!img.offsetWidth) return;
-        ov.style.width = img.offsetWidth + 'px';
-        ov.style.height = img.offsetHeight + 'px';
+        ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px';
     }
 
     function updateInfoPanel(item) {
@@ -352,13 +304,18 @@
     function resetView() { pz.reset(); }
 
     window.onload = () => {
-        pz = Panzoom(document.getElementById('panzoom-element'), { maxScale: 8, minScale: 0.1, contain: 'outside' });
+        pz = Panzoom(document.getElementById('panzoom-element'), { 
+            maxScale: 8, 
+            minScale: 0.1, 
+            contain: 'outside' // 嚴格遵守：不允許黑邊
+        });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
-        loadData();
+        loadData(); initResizers();
     };
 
     window.addEventListener('resize', () => {
-        sidePanel.style.width = ''; sidePanel.style.flex = '';
+        document.getElementById('side-panel').style.width = '';
+        document.getElementById('side-panel').style.flex = '';
         setTimeout(syncOverlay, 150);
     });
 </script>
