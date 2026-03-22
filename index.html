@@ -2,12 +2,12 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>亞伯拉罕史地互動地圖 V5.2</title>
+    <title>亞伯拉罕史地互動地圖 V5.1</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --bg-dark: #2c3e50; }
         * { box-sizing: border-box; font-family: "微軟正黑體", sans-serif; }
-        body { margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; background: #111; }
+        body { margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; background: #222; }
         
         #app-container { display: flex; width: 100%; height: 100%; }
         #map-section { flex: 1.5; position: relative; overflow: hidden; background: #1a1a1a; cursor: grab; }
@@ -17,24 +17,23 @@
         #overlay-container { position: absolute; pointer-events: none; top: 0; left: 0; width: 100%; height: 100%; }
         #svg-layer, #marker-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-        /* 標記樣式：解決重疊問題 */
-        .marker { position: absolute; transform: translate(-50%, -50%); padding: 4px 10px; border-radius: 15px; font-size: 13px; font-weight: bold; background: rgba(255,255,255,0.9); border: 1px solid #777; white-space: nowrap; pointer-events: auto; cursor: pointer; z-index: 10; transition: transform 0.2s, box-shadow 0.2s; }
-        .marker.active { background: var(--gold); color: white; border: 2px solid #fff; z-index: 9999 !important; box-shadow: 0 0 15px var(--gold); transform: translate(-50%, -50%) scale(1.1); }
+        /* 標記樣式 */
+        .marker { position: absolute; transform: translate(-50%, -50%); padding: 4px 10px; border-radius: 15px; font-size: 13px; font-weight: bold; background: rgba(255,255,255,0.9); border: 1px solid #777; white-space: nowrap; pointer-events: auto; cursor: pointer; z-index: 10; }
+        .marker.active { background: var(--gold); color: white; border: 2px solid #fff; z-index: 1000 !important; box-shadow: 0 0 15px var(--gold); transform: translate(-50%, -50%) scale(1.1); }
         .marker-dot { padding: 0; width: 8px; height: 8px; border-radius: 50%; background: #999; border: 1px solid #fff; color: transparent !important; opacity: 0.5; z-index: 1; }
 
-        #table-section { width: 380px; background: white; overflow-y: auto; border-left: 4px solid var(--gold); z-index: 100; }
+        #table-section { width: 350px; background: white; overflow-y: auto; border-left: 4px solid var(--gold); box-shadow: -5px 0 15px rgba(0,0,0,0.3); z-index: 100; }
         table { width: 100%; border-collapse: collapse; }
         th { background: var(--bg-dark); color: white; position: sticky; top: 0; padding: 12px; text-align: left; z-index: 110; }
-        td { padding: 12px 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; line-height: 1.4; }
-        tr:hover { background: #f5f5f5; }
+        td { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; }
+        tr:hover { background: #f9f9f9; }
         tr.selected td { background: #fff9c4; font-weight: bold; border-left: 5px solid var(--gold); }
 
-        /* 資訊框：修復移動與階層 */
-        #info-box { position: fixed; top: 30px; left: 30px; width: 340px; background: white; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); border-top: 6px solid var(--gold); z-index: 10000; display: none; flex-direction: column; }
-        #info-header { padding: 15px; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; cursor: move; border-radius: 10px 10px 0 0; user-select: none; border-bottom: 1px solid #eee; }
-        #info-body { padding: 20px; max-height: 65vh; overflow-y: auto; }
-        .path-box { background: #f1f2f6; padding: 12px; border-radius: 6px; border-left: 5px solid #747d8c; margin-bottom: 15px; font-size: 14px; }
-        .btn-tool { border: none; background: none; cursor: pointer; font-size: 20px; color: #666; padding: 0 5px; }
+        /* 資訊框 - 確保拖動順暢 */
+        #info-box { position: fixed; top: 30px; left: 30px; width: 320px; background: white; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-top: 6px solid var(--gold); z-index: 2000; display: none; flex-direction: column; }
+        #info-header { padding: 12px; background: #f1f1f1; display: flex; justify-content: space-between; align-items: center; cursor: move; border-radius: 10px 10px 0 0; user-select: none; }
+        #info-body { padding: 15px; max-height: 60vh; overflow-y: auto; }
+        .path-box { background: #f8f9fa; padding: 10px; border-radius: 5px; border-left: 4px solid #747d8c; margin-bottom: 12px; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -48,31 +47,31 @@
                 <div id="marker-layer"></div>
             </div>
         </div>
-        <div style="position:absolute; bottom:25px; left:25px; z-index:500; display:flex; flex-direction:column; gap:10px;">
-            <button onclick="pz.zoomIn()" style="width:45px; height:45px; border-radius:8px; border:1px solid #ccc; background:white; cursor:pointer; font-size:20px;">+</button>
-            <button onclick="pz.zoomOut()" style="width:45px; height:45px; border-radius:8px; border:1px solid #ccc; background:white; cursor:pointer; font-size:20px;">-</button>
-            <button onclick="resetV()" style="width:45px; height:45px; border-radius:8px; border:1px solid #ccc; background:white; cursor:pointer; font-size:20px;">↺</button>
+        <div style="position:absolute; bottom:20px; left:20px; z-index:500;">
+            <button onclick="pz.zoomIn()" style="padding:10px 15px; cursor:pointer;">+</button>
+            <button onclick="pz.zoomOut()" style="padding:10px 15px; cursor:pointer;">-</button>
+            <button onclick="resetV()" style="padding:10px 15px; cursor:pointer;">↺</button>
         </div>
     </div>
     <div id="table-section">
         <table>
-            <thead><tr><th width="55">#</th><th>聖經關鍵事件 (Abraham史地)</th></tr></thead>
+            <thead><tr><th width="50">#</th><th>聖經關鍵事件</th></tr></thead>
             <tbody id="table-body"></tbody>
         </table>
     </div>
 </div>
 
 <div id="info-box">
-    <div id="info-header">
-        <span style="font-weight:bold; color:#333;">📍 事件詳細資訊</span>
-        <div><button onclick="toggleMin()" class="btn-tool">－</button><button onclick="closeInfo()" class="btn-tool">×</button></div>
+    <div id="info-header" onmousedown="initDrag(event)">
+        <span style="font-weight:bold;">📍 事件詳情 (按住拖動)</span>
+        <div><button onclick="toggleMin()" style="cursor:pointer; border:none; background:none; font-size:18px;">-</button><button onclick="closeInfo()" style="cursor:pointer; border:none; background:none; font-size:18px;">×</button></div>
     </div>
     <div id="info-body">
-        <div id="info-time" style="color:#888; font-size:12px; margin-bottom:6px;"></div>
-        <h3 id="info-title" style="margin:0 0 15px 0; color:var(--gold); line-height:1.3;"></h3>
+        <div id="info-time" style="color:#888; font-size:12px; margin-bottom:5px;"></div>
+        <h3 id="info-title" style="margin:0 0 15px 0; color:var(--gold);"></h3>
         <div id="info-path" class="path-box"></div>
-        <p><strong>經文參考：</strong><span id="info-script" style="color:#2980b9;"></span></p>
-        <div id="info-note" style="font-size:13px; color:#444; line-height:1.7; background:#fafafa; padding:12px; border-radius:5px; border:1px solid #efefef;"></div>
+        <p><strong>經文：</strong><span id="info-script" style="color:#2980b9;"></span></p>
+        <div id="info-note" style="font-size:13px; color:#444; line-height:1.6; background:#fdfdfd; padding:8px; border:1px solid #eee;"></div>
     </div>
 </div>
 
@@ -80,35 +79,20 @@
     let pz, eventData = [], freqMap = {}, coordsSmall = {}, coordsLarge = {};
     let currentMap = 'small';
 
-    // === 資訊框拖動邏輯 (Chrome/Edge 最佳化版) ===
-    const infoBox = document.getElementById('info-box');
-    const infoHeader = document.getElementById('info-header');
-    let isDragging = false, currX, currY, initialX, initialY;
+    // 拖動邏輯修復
+    function initDrag(e) {
+        const box = document.getElementById('info-box');
+        // 清除 right/bottom 確保 left/top 生效
+        box.style.right = 'auto'; box.style.bottom = 'auto';
+        let offsetX = e.clientX - box.offsetLeft;
+        let offsetY = e.clientY - box.offsetTop;
+        document.onmousemove = (ev) => {
+            box.style.left = (ev.clientX - offsetX) + 'px';
+            box.style.top = (ev.clientY - offsetY) + 'px';
+        };
+        document.onmouseup = () => { document.onmousemove = null; };
+    }
 
-    infoHeader.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        // 關鍵：清除 right/bottom，改用 left/top 接管，防止定位鎖死
-        infoBox.style.right = 'auto'; infoBox.style.bottom = 'auto';
-        initialX = e.clientX - infoBox.offsetLeft;
-        initialY = e.clientY - infoBox.offsetTop;
-        infoHeader.style.cursor = 'grabbing';
-    });
-
-    window.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        e.preventDefault();
-        currX = e.clientX - initialX;
-        currY = e.clientY - initialY;
-        infoBox.style.left = currX + 'px';
-        infoBox.style.top = currY + 'px';
-    });
-
-    window.addEventListener('mouseup', () => {
-        isDragging = false;
-        infoHeader.style.cursor = 'move';
-    });
-
-    // === 核心解析邏輯 ===
     async function loadData() {
         const t = Date.now();
         try {
@@ -118,36 +102,34 @@
                 fetch(`data.csv?t=${t}`).then(r => r.text())
             ]);
 
-            parseCSV(s).forEach(r => { if(r[1]) coordsSmall[r[1].trim()] = {x:r[5], y:r[6]}; });
-            parseCSV(l).forEach(r => { if(r[1]) coordsLarge[r[1].trim()] = {x:r[5], y:r[6]}; });
+            // 解析座標
+            parseCSV(s).slice(1).forEach(r => { if(r[1]) coordsSmall[r[1].trim()] = {x:r[5], y:r[6]}; });
+            parseCSV(l).slice(1).forEach(r => { if(r[1]) coordsLarge[r[1].trim()] = {x:r[5], y:r[6]}; });
 
+            // 解析事件並修復 86 筆後的顯示問題
             const tbody = document.getElementById('table-body');
-            tbody.innerHTML = '';
-            // 修正 86 筆問題：更寬鬆的過濾條件
-            eventData = parseCSV(d).slice(1).filter(r => r.length >= 3 && (r[0] || r[2])).map((r, i) => {
+            eventData = parseCSV(d).slice(1).filter(r => r[0] || r[2]).map((r, i) => {
                 const item = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] };
                 const tr = document.createElement('tr');
                 tr.innerHTML = `<td>${item.id||''}</td><td>${item.event||''}</td>`;
                 tr.onclick = () => selectEvent(i, tr);
                 tbody.appendChild(tr);
-                
+                // 統計地點頻率
                 const names = (r[3]||"").replace(/\(.*?\)/g, '').split('→').map(p=>p.trim());
                 names.forEach(p => { if(p) freqMap[p] = (freqMap[p]||0)+1; });
                 return item;
             });
+            console.log("總共載入事件數:", eventData.length);
 
             const mapImg = document.getElementById('bg-map');
             if(mapImg.complete) syncOverlay(); else mapImg.onload = syncOverlay;
-        } catch(e) { console.error("CSV 加載出錯:", e); }
+        } catch(e) { console.error("載入失敗", e); }
     }
 
-    // 模糊搜尋定位：解決「瑣珥附近山洞」對應到「瑣珥」
+    // 模糊搜尋定位
     function findCoord(name, db) {
-        if(!name) return null;
-        const cleanName = name.trim();
-        if(db[cleanName]) return { ...db[cleanName], n:cleanName };
-        // 模糊匹配：檢查座標庫地名是否包含在事件地名中
-        for(let key in db) { if(cleanName.includes(key)) return { ...db[key], n:cleanName }; }
+        if(db[name]) return { ...db[name], n:name };
+        for(let key in db) { if(name.includes(key) || key.includes(name)) return { ...db[key], n:name }; }
         return null;
     }
 
@@ -185,7 +167,7 @@
                 const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                 l.setAttribute('x1', actives[i].x+'%'); l.setAttribute('y1', actives[i].y+'%');
                 l.setAttribute('x2', actives[i+1].x+'%'); l.setAttribute('y2', actives[i+1].y+'%');
-                l.setAttribute('stroke', '#e74c3c'); l.setAttribute('stroke-width', '3'); l.setAttribute('stroke-dasharray', '6,4');
+                l.setAttribute('stroke', '#e74c3c'); l.setAttribute('stroke-width', '3'); l.setAttribute('stroke-dasharray', '5,5');
                 sl.appendChild(l);
             }
         }
@@ -195,43 +177,39 @@
             m.className = isA ? 'marker active' : ((freqMap[name]||0)>2 ? 'marker' : 'marker marker-dot');
             m.style.left = db[name].x+'%'; m.style.top = db[name].y+'%';
             m.innerText = isA ? actives.find(a => a.n.includes(name) || name.includes(a.n)).n : name;
-            m.onclick = (e) => { e.stopPropagation(); flyTo([{...db[name], n:name}]); };
+            m.onclick = () => flyTo([{...db[name], n:name}]);
             ml.appendChild(m);
         });
     }
 
-    // 核心修復：最強力 CSV 解析器 (處理逗號、引號與斷行)
-    function parseCSV(text) {
-        const result = [];
-        let row = [], cell = '', inQuotes = false;
-        for (let i = 0; i < text.length; i++) {
-            let char = text[i], next = text[i+1];
-            if (char === '"' && inQuotes && next === '"') { cell += '"'; i++; }
-            else if (char === '"') { inQuotes = !inQuotes; }
-            else if (char === ',' && !inQuotes) { row.push(cell.trim()); cell = ''; }
-            else if ((char === '\n' || char === '\r') && !inQuotes) {
-                if (cell || row.length > 0) {
-                    row.push(cell.trim()); result.push(row);
-                    row = []; cell = '';
-                }
-                if (char === '\r' && next === '\n') i++;
-            } else { cell += char; }
-        }
-        if (cell || row.length > 0) { row.push(cell.trim()); result.push(row); }
-        return result;
-    }
-
     function showInfo(item, actives) {
-        infoBox.style.display = 'flex';
+        const box = document.getElementById('info-box');
+        box.style.display = 'flex';
         document.getElementById('info-time').innerText = item.time;
         document.getElementById('info-title').innerText = item.event;
         document.getElementById('info-script').innerText = item.script;
         document.getElementById('info-note').innerText = item.note;
-        const locNames = item.loc.replace(/\(.*?\)/g, '').split('→').map(p=>p.trim());
+        
         const dist = item.loc.match(/\((.*?)\)/);
-        document.getElementById('info-path').innerHTML = locNames.length > 1 ? 
-            `<b>起點：</b>${locNames[0]}<br><b>終點：</b>${locNames[locNames.length-1]}${dist?`<br><b>距離：</b>${dist[1]}`:''}` : 
-            `<b>地點：</b>${locNames[0]}`;
+        const locs = item.loc.replace(/\(.*?\)/g, '').split('→').map(p=>p.trim());
+        document.getElementById('info-path').innerHTML = locs.length > 1 ? 
+            `🏁 <b>起點：</b>${locs[0]}<br>🎯 <b>終點：</b>${locs[locs.length-1]}${dist?`<br>📏 <b>距離：</b>${dist[1]}`:''}` : 
+            `📍 <b>地點：</b>${locs[0]}`;
+    }
+
+    // 核心修復：強大的 CSV 解析正規表達式
+    function parseCSV(text) {
+        const re = /(?!\s*$)\s*(?:'([^']*)'|"([^"]*)"|([^, \t\n\r]*))\s*(?:[, \t\n\r]|$)/g;
+        const rows = []; let row = [];
+        text.replace(/\r/g, '').split('\n').forEach(line => {
+            if(!line.trim()) return;
+            row = [];
+            line.replace(re, (m, s1, s2, s3) => {
+                row.push(s1 || s2 || s3 || ''); return '';
+            });
+            rows.push(row);
+        });
+        return rows;
     }
 
     function syncOverlay() {
@@ -250,7 +228,7 @@
     }
 
     function resetV() { pz.reset(); }
-    function closeInfo() { infoBox.style.display = 'none'; }
+    function closeInfo() { document.getElementById('info-box').style.display = 'none'; }
     function toggleMin() { 
         const b = document.getElementById('info-body');
         b.style.display = b.style.display === 'none' ? 'block' : 'none';
