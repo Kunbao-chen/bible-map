@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V7.0</title>
+    <title>亞伯拉罕史地互動地圖 V7.2</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --dark: #2c3e50; --handle-bg: #ddd; }
@@ -25,7 +25,7 @@
         .map-controls { position: absolute; left: 15px; bottom: 30px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
         .map-controls button { width: 44px; height: 44px; border-radius: 8px; border: 1px solid #999; background: rgba(255,255,255,0.9); font-size: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
 
-        /* 拉桿：主拉桿 */
+        /* 主拉桿 */
         #resizer-main { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; border: 1px solid #bbb; }
         @media (min-width: 801px), (orientation: landscape) { #resizer-main { width: 12px; cursor: col-resize; height: 100%; } #resizer-main::after { content: "⋮"; } }
         @media (max-width: 800px) and (orientation: portrait) { #resizer-main { height: 16px; cursor: row-resize; width: 100%; } #resizer-main::after { content: "⋯"; } }
@@ -114,31 +114,37 @@
     let currentMap = 'small', currentEventIdx = -1;
     let locationFrequency = {};
 
-    // === 核心修正 1：精準 FlyTo (不論縮放倍率) ===
+    // === 核心修正：精確物理中心對齊演算法 ===
     function flyTo(pts) {
         if (!pts.length) return;
-        const img = document.getElementById('bg-map'), mapSection = document.getElementById('map-section');
+        const img = document.getElementById('bg-map');
+        const container = document.getElementById('map-section');
         
-        // 使用 offsetWidth 取得圖片在 scale=1 時的基準尺寸
+        // 1. 取得圖片的「基礎 CSS 寬高」（不受 Transform 縮放影響的原始渲染大小）
         const baseW = img.offsetWidth;
         const baseH = img.offsetHeight;
 
-        let sx=0, sy=0; pts.forEach(p => { sx += parseFloat(p.x); sy += parseFloat(p.y); });
-        const targetXPct = sx / pts.length / 100;
-        const targetYPct = sy / pts.length / 100;
+        // 2. 計算目標點的百分比平均值 (0~1 之間)
+        let totalX = 0, totalY = 0;
+        pts.forEach(p => { 
+            totalX += parseFloat(p.x); 
+            totalY += parseFloat(p.y); 
+        });
+        const pctX = (totalX / pts.length) / 100;
+        const pctY = (totalY / pts.length) / 100;
 
+        // 3. 抓取當下的縮放倍率 (例如 0.3)
         const scale = pz.getScale();
-        const containerW = mapSection.offsetWidth;
-        const containerH = mapSection.offsetHeight;
 
-        // 目標位移：(容器中心) - (目標點在當前縮放下的位置)
-        const targetPanX = (containerW / 2) - (targetXPct * baseW * scale);
-        const targetPanY = (containerH / 2) - (targetYPct * baseH * scale);
+        // 4. 對齊公式：(容器寬度/2) - (目標點在當前倍率下的絕對像素位置)
+        // 這會補償縮放造成的位移，將目標推向容器的正中心
+        const targetPanX = (container.offsetWidth / 2) - (pctX * baseW * scale);
+        const targetPanY = (container.offsetHeight / 2) - (pctY * baseH * scale);
 
         pz.pan(targetPanX, targetPanY, { animate: true });
     }
 
-    // === 核心修正 2：收折功能與拉桿連動 ===
+    // === 資訊區縮折功能 ===
     function toggleInfo() {
         const body = document.getElementById('info-body');
         const arrow = document.getElementById('info-arrow');
@@ -148,17 +154,17 @@
         if (body.style.display === 'none') {
             body.style.display = 'block';
             resizer.style.display = 'flex';
-            area.style.flex = "0 0 45%"; // 恢復預設高度
+            area.style.flex = "0 0 45%";
             arrow.innerText = '▼';
         } else {
             body.style.display = 'none';
             resizer.style.display = 'none';
-            area.style.flex = "0 0 44px"; // 僅留下 Header 高度
+            area.style.flex = "0 0 44px";
             arrow.innerText = '▲';
         }
     }
 
-    // === 拉桿邏輯 (保持 V6.5 的穩定性) ===
+    // === 雙重拉桿邏輯 ===
     const resizerMain = document.getElementById('resizer-main'), sidePanel = document.getElementById('side-panel');
     resizerMain.addEventListener('mousedown', initDragMain);
     resizerMain.addEventListener('touchstart', initDragMain, {passive:false});
@@ -197,7 +203,7 @@
         window.addEventListener('mouseup', end); window.addEventListener('touchend', end);
     }
 
-    // === 標籤渲染修正 (過濾無效座標) ===
+    // === 標籤渲染 (包含無效資料過濾) ===
     function renderMarkers(db, actives) {
         const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer');
         ml.innerHTML = ''; sl.innerHTML = '';
@@ -214,7 +220,7 @@
 
         Object.keys(db).forEach(name => {
             const data = db[name];
-            // 嚴格過濾無效座標或空名稱
+            // 防止左上角出現奇怪標籤：過濾無座標或 x=0 的無效點
             if (!name || name === 'undefined' || !data.x || isNaN(data.x) || parseFloat(data.x) === 0) return;
 
             const isA = actives.some(a => a.n === name);
@@ -241,10 +247,9 @@
                             occupied.push(r);
                         }
                   });
-        }, 80);
+        }, 100);
     }
 
-    // === 資料與同步 ===
     async function selectEvent(idx, tr) {
         currentEventIdx = idx;
         document.querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
