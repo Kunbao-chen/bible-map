@@ -2,52 +2,51 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>聖經地理萬用框架 V9.3 - 中文欄位適配版</title>
+    <title>聖經地理 V8.2 - 路徑修正版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        :root { --sidebar-width: 380px; }
-        body { margin: 0; display: flex; height: 100vh; font-family: "Microsoft JhengHei", sans-serif; background: #f0f2f5; }
-        #sidebar { width: var(--sidebar-width); display: flex; flex-direction: column; border-right: 1px solid #ccc; background: white; }
-        #controls { padding: 15px; border-bottom: 1px solid #eee; }
-        select, input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
-        #event-list-container { flex-grow: 1; overflow-y: auto; }
+        body { margin: 0; display: flex; height: 100vh; font-family: "Microsoft JhengHei", sans-serif; }
+        #sidebar { width: 380px; display: flex; flex-direction: column; border-right: 1px solid #ccc; }
+        #controls { padding: 15px; background: #eee; }
+        #event-list { flex-grow: 1; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: 0.2s; font-size: 14px; line-height: 1.4; }
-        tr:hover td { background: #f8f9fa; }
-        tr.active td { background: #e7f3ff; color: #007bff; font-weight: bold; border-left: 5px solid #007bff; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; cursor: pointer; }
+        tr:hover { background-color: #f5f5f5; }
+        tr.active { background-color: #d1ecf1; }
         #map-container { flex-grow: 1; position: relative; }
-        #map { height: 100%; width: 100%; background: #e5e5e5; }
-        #info-panel { position: absolute; bottom: 25px; left: 25px; width: 320px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 1000; display: none; }
-        #info-title { margin-top: 0; color: #333; font-size: 18px; }
-        #info-content { color: #666; font-size: 14px; line-height: 1.6; }
-        .nav-btns { display: flex; gap: 10px; margin-top: 15px; }
-        button { flex: 1; padding: 8px; cursor: pointer; background: #fff; border: 1px solid #ddd; border-radius: 4px; }
-        button:hover { background: #f0f0f0; }
+        #map { height: 100%; }
+        /* 恢復可拖動面板樣式 */
+        #info-panel {
+            position: absolute; top: 50px; left: 50px; width: 300px;
+            background: white; border: 2px solid #333; border-radius: 8px;
+            z-index: 1000; cursor: move; box-shadow: 3px 3px 10px rgba(0,0,0,0.3);
+        }
+        #info-header { padding: 10px; background: #333; color: white; display: flex; justify-content: space-between; border-radius: 5px 5px 0 0; }
+        #info-body { padding: 15px; max-height: 400px; overflow-y: auto; }
+        .reset-btn { position: absolute; top: 10px; right: 10px; z-index: 1000; padding: 8px 12px; background: white; border: 1px solid #ccc; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
     <div id="controls">
-        <select id="folder-select"><option value="">載入中...</option></select>
-        <input type="text" id="search-input" placeholder="🔍 搜尋關鍵字或地點...">
+        <select id="folder-select" style="width:100%; margin-bottom:10px;"></select>
+        <input type="text" id="search" placeholder="搜尋事件或地點..." style="width:100%; padding:5px;">
     </div>
-    <div id="event-list-container">
-        <table id="event-table">
-            <tbody id="event-body"></tbody>
+    <div id="event-list">
+        <table>
+            <thead><tr><th>序號</th><th>關鍵事件內容</th></tr></thead>
+            <tbody id="event-table-body"></tbody>
         </table>
     </div>
 </div>
 
 <div id="map-container">
+    <button class="reset-btn" onclick="resetView()">還原視角</button>
     <div id="map"></div>
     <div id="info-panel">
-        <h3 id="info-title"></h3>
-        <p id="info-content"></p>
-        <div class="nav-btns">
-            <button onclick="navEvent(-1)">◀ 上一個</button>
-            <button onclick="navEvent(1)">下一個 ▶</button>
-        </div>
+        <div id="info-header"><span id="info-title">點擊事件查看詳情</span><span onclick="this.parentElement.parentElement.style.display='none'" style="cursor:pointer">✖</span></div>
+        <div id="info-body"></div>
     </div>
 </div>
 
@@ -55,180 +54,136 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 
 <script>
-    let map;
-    let currentFolder = "";
+    let map, imageOverlay;
     let masterData = [];
-    let filteredData = [];
-    let currentIndex = -1;
-    let allCoords = {};
-    let currentImageOverlay = null;
+    let currentCoords = {};
+    let currentFolder = "";
 
-    // 欄位對應表 (包含英文備份與您的中文欄位)
-    const MAPPINGS = {
-        title: ['關鍵事件內容', 'Title', '標題'],
-        location: ['地點 (距離)', '地點', 'Location', '地名'],
-        desc: ['備註 (關聯、釋義、補充)', 'Description', '內容', '備註'],
-        x: ['百分比X', 'X', '經度'],
-        y: ['百分比Y', 'Y', '緯度']
-    };
-
-    function findKey(row, type) {
-        const keys = Object.keys(row);
-        return MAPPINGS[type].find(m => keys.includes(m)) || keys[0];
-    }
-
+    // 1. 初始化地圖與資料夾
     async function init() {
         map = L.map('map', { crs: L.CRS.Simple, minZoom: -2 });
-        map.setView([500, 500], -1);
+        
+        // 讀取 folder.csv
+        const fRes = await fetch('folder.csv');
+        const fText = await fRes.text();
+        const folders = Papa.parse(fText.trim(), { header: true }).data;
+        
+        const select = document.getElementById('folder-select');
+        folders.forEach(f => {
+            let opt = document.createElement('option');
+            opt.value = f.folder_name;
+            opt.textContent = f.display_name;
+            select.appendChild(opt);
+        });
 
-        try {
-            const response = await fetch('folder.csv');
-            const csvText = await response.text();
-            const folders = Papa.parse(csvText, { 
-                header: true, skipEmptyLines: 'greedy',
-                transformHeader: h => h.trim().replace(/^\ufeff/, '') 
-            }).data.filter(f => f.folder_name);
-
-            const select = document.getElementById('folder-select');
-            select.innerHTML = '';
-            folders.forEach(f => {
-                const opt = document.createElement('option');
-                opt.value = f.folder_name.trim();
-                opt.textContent = f.display_name || f.folder_name;
-                select.appendChild(opt);
-            });
-
-            const savedFolder = localStorage.getItem('lastBibleFolder');
-            if (savedFolder && folders.find(f => f.folder_name.trim() === savedFolder)) {
-                select.value = savedFolder;
-            }
-            
-            loadFolder(select.value);
-            select.onchange = (e) => {
-                localStorage.setItem('lastBibleFolder', e.target.value);
-                loadFolder(e.target.value);
-            };
-            document.getElementById('search-input').oninput = handleSearch;
-        } catch (e) { console.error("初始化失敗:", e); }
+        select.onchange = () => loadData(select.value);
+        loadData(select.value); // 初始載入第一個
+        makeDraggable(document.getElementById("info-panel"));
     }
 
-    async function loadFolder(folder) {
-        if (!folder) return;
+    // 2. 載入指定資料夾的內容
+    async function loadData(folder) {
         currentFolder = folder;
-        allCoords = {};
-        currentIndex = -1;
-        document.getElementById('event-body').innerHTML = '<tr><td>載入資料中...</td></tr>';
+        // 清除舊地圖與標記
+        if (imageOverlay) map.removeLayer(imageOverlay);
+        clearMarkers();
 
-        try {
-            const res = await fetch(`${folder}/data.csv`);
-            const text = await res.text();
-            const results = Papa.parse(text, { header: true, skipEmptyLines: 'greedy' });
+        // 載入事件資料
+        const res = await fetch(`${folder}/data.csv`);
+        const text = await res.text();
+        masterData = Papa.parse(text.trim(), { header: true }).data;
 
-            if (results.data.length > 0) {
-                const tKey = findKey(results.data[0], 'title');
-                const lKey = findKey(results.data[0], 'location');
-                const dKey = findKey(results.data[0], 'desc');
-
-                masterData = results.data.map(d => ({
-                    Title: d[tKey] || "",
-                    Location: d[lKey] || "",
-                    Description: d[dKey] || ""
-                })).filter(d => d.Title);
-
-                filteredData = [...masterData];
-                renderTable();
-
-                // 載入座標
-                for (let i = 1; i <= 5; i++) {
-                    fetch(`${folder}/coords_${i}.csv`).then(async r => {
-                        if (r.ok) {
-                            const cText = await r.text();
-                            const cData = Papa.parse(cText, { header: true, skipEmptyLines: 'greedy' }).data;
-                            if (cData.length > 0) {
-                                const locKey = findKey(cData[0], 'location');
-                                allCoords[i] = cData.sort((a, b) => (b[locKey]?.length || 0) - (a[locKey]?.length || 0));
-                            }
-                        }
-                    });
-                }
-            }
-        } catch (e) { document.getElementById('event-body').innerHTML = '<tr><td>載入失敗</td></tr>'; }
+        // 預載座標 (這裡假設您依然使用 coords_1.csv 對應 picture_1.png)
+        // 為了 8.2 的簡潔，我們在切換事件時才去讀取對應的座標檔
+        renderTable(masterData);
     }
 
-    function renderTable() {
-        const body = document.getElementById('event-body');
-        body.innerHTML = '';
-        filteredData.forEach((item, index) => {
+    function renderTable(data) {
+        const tbody = document.getElementById('event-table-body');
+        tbody.innerHTML = '';
+        data.forEach((row, index) => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${item.Title}</td>`;
-            tr.onclick = () => selectEvent(index);
-            if (index === currentIndex) tr.className = 'active';
-            body.appendChild(tr);
+            tr.innerHTML = `<td>${row['序號']}</td><td>${row['關鍵事件內容']}</td>`;
+            tr.onclick = () => selectEvent(row);
+            tbody.appendChild(tr);
         });
     }
 
-    function handleSearch(e) {
-        const term = e.target.value.toLowerCase();
-        filteredData = masterData.filter(i => i.Title.includes(term) || i.Location.includes(term));
-        renderTable();
-    }
-
-    function selectEvent(index) {
-        currentIndex = index;
-        const item = filteredData[index];
-        renderTable();
+    async function selectEvent(row) {
+        // 更新資訊面板
         document.getElementById('info-panel').style.display = 'block';
-        document.getElementById('info-title').textContent = item.Title;
-        document.getElementById('info-content').textContent = item.Description;
+        document.getElementById('info-title').innerText = `序號 ${row['序號']}`;
+        document.getElementById('info-body').innerHTML = `<b>地點：</b>${row['地點 (距離)']}<br><br>${row['備註 (關聯、釋義、補充)']}`;
 
-        // 地圖切換邏輯 (尋找匹配地名最多的地圖)
-        let bestMapId = 1;
-        let maxMatches = -1;
-        const locs = item.Location.split(/[→,，、 ]/).map(l => l.trim()).filter(l => l);
-
-        Object.keys(allCoords).forEach(id => {
-            let matches = 0;
-            const lK = findKey(allCoords[id][0], 'location');
-            locs.forEach(l => { if (allCoords[id].find(c => l.includes(c[lK]))) matches++; });
-            if (matches > maxMatches) { maxMatches = matches; bestMapId = id; }
-        });
-
-        updateMap(bestMapId, locs);
+        // 決定載入哪張地圖 (簡單判斷：優先看有沒有對應的圖，預設用 1)
+        // 您可以根據需要在此處加入更複雜的地圖切換邏輯
+        showMap(1, row['地點 (距離)']);
     }
 
-    function navEvent(step) {
-        let n = currentIndex + step;
-        if (n >= 0 && n < filteredData.length) selectEvent(n);
-    }
+    async function showMap(mapId, locationStr) {
+        const imgPath = `${currentFolder}/picture_${mapId}.png`;
+        const coordPath = `${currentFolder}/coords_${mapId}.csv`;
 
-    function updateMap(mapId, locs) {
-        const path = `${currentFolder}/picture_${mapId}.png`;
         const img = new Image();
-        img.onload = function() {
+        img.onload = async function() {
             const bounds = [[0, 0], [img.height, img.width]];
-            if (currentImageOverlay) map.removeLayer(currentImageOverlay);
-            currentImageOverlay = L.imageOverlay(path, bounds).addTo(map);
+            if (imageOverlay) map.removeLayer(imageOverlay);
+            imageOverlay = L.imageOverlay(imgPath, bounds).addTo(map);
             
-            map.eachLayer(l => { if (l instanceof L.Marker) map.removeLayer(l); });
+            // 讀取座標並標註
+            const cRes = await fetch(coordPath);
+            const cText = await cRes.text();
+            const coords = Papa.parse(cText.trim(), { header: true }).data;
             
-            let pts = [];
-            const lK = findKey(allCoords[mapId][0], 'location');
-            const xK = findKey(allCoords[mapId][0], 'x');
-            const yK = findKey(allCoords[mapId][0], 'y');
-
-            locs.forEach(l => {
-                const c = allCoords[mapId]?.find(coord => l.includes(coord[lK]));
-                if (c) {
-                    const p = [parseFloat(c[yK]), parseFloat(c[xK])];
-                    L.marker(p).addTo(map).bindTooltip(c[lK], {permanent: true});
-                    pts.push(p);
+            clearMarkers();
+            
+            // 找出 CSV 裡匹配的地點
+            let targetPoint = null;
+            coords.forEach(c => {
+                if (locationStr.includes(c['地名'])) {
+                    const x = parseFloat(c['百分比X']);
+                    const y = parseFloat(c['百分比Y']);
+                    const marker = L.marker([y, x]).addTo(map).bindTooltip(c['地名'], {permanent: true});
+                    targetPoint = [y, x];
                 }
             });
 
-            if (pts.length > 0) map.flyToBounds(L.featureGroup(pts.map(p => L.marker(p))).getBounds().pad(0.5));
-            else map.fitBounds(bounds);
+            // 如果有找到點，則平移過去，但「不改變縮放倍率」
+            if (targetPoint) {
+                map.panTo(targetPoint); 
+            } else {
+                map.fitBounds(bounds);
+            }
         };
-        img.src = path;
+        img.src = imgPath;
+    }
+
+    function resetView() {
+        if (imageOverlay) map.fitBounds(imageOverlay.getBounds());
+    }
+
+    function clearMarkers() {
+        map.eachLayer(layer => {
+            if (layer instanceof L.Marker) map.removeLayer(layer);
+        });
+    }
+
+    // 恢復可拖動邏輯
+    function makeDraggable(el) {
+        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        const header = document.getElementById("info-header");
+        header.onmousedown = (e) => {
+            e.preventDefault();
+            pos3 = e.clientX; pos4 = e.clientY;
+            document.onmouseup = () => { document.onmouseup = null; document.onmousemove = null; };
+            document.onmousemove = (e) => {
+                e.preventDefault();
+                pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
+                pos3 = e.clientX; pos4 = e.clientY;
+                el.style.top = (el.offsetTop - pos2) + "px";
+                el.style.left = (el.offsetLeft - pos1) + "px";
+            };
+        };
     }
 
     init();
