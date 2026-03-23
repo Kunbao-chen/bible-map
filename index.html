@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.0</title>
+    <title>亞伯拉罕史地互動地圖 V10.1</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --dark: #2c3e50; --handle-bg: #ddd; }
@@ -12,25 +12,23 @@
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
         @media (max-width: 800px) and (orientation: portrait) { #app-container { flex-direction: column; } #side-panel { width: 100% !important; flex: 0 0 50dvh; } }
         
-        /* 地圖區域 */
         #map-section { flex: 1; position: relative; overflow: hidden; background: #1a1a1a; }
         #panzoom-element { display: inline-block; }
         #bg-map { display: block; max-width: none; user-select: none; -webkit-user-drag: none; }
         
-        /* 懸浮控制選單 (收折設計) */
+        /* 懸浮控制選單 (去底色設計) */
         .fab-container { position: absolute; left: 15px; top: 15px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
-        .fab-main { width: 50px; height: 50px; border-radius: 25px; background: var(--gold); color: white; border: none; font-size: 24px; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 2001; }
+        .fab-main { width: 50px; height: 50px; background: transparent; color: white; border: none; font-size: 28px; cursor: pointer; z-index: 2001; text-shadow: 0 0 5px rgba(0,0,0,0.8); }
         .fab-menu { display: none; flex-direction: column; gap: 10px; padding-left: 3px; }
         .fab-menu.show { display: flex; }
         .fab-item { width: 44px; height: 44px; border-radius: 10px; border: 1px solid #ccc; background: rgba(255,255,255,0.9); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 
-        /* 搜尋欄位 (向左展開) */
+        /* 搜尋欄位 (動態切換 🔍/❌) */
         .search-container { position: absolute; right: 15px; top: 15px; z-index: 2000; display: flex; align-items: center; }
         #search-input { width: 0; opacity: 0; transition: all 0.3s; border: 1px solid #ccc; border-radius: 20px; padding: 8px 0; outline: none; background: rgba(255,255,255,0.9); }
         #search-input.open { width: 200px; opacity: 1; padding: 8px 15px; margin-right: 10px; }
-        .search-btn { width: 44px; height: 44px; border-radius: 22px; background: rgba(255,255,255,0.7); border: none; cursor: pointer; font-size: 20px; }
+        .search-btn { width: 44px; height: 44px; border-radius: 22px; background: rgba(255,255,255,0.7); border: none; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; }
 
-        /* 面板與調整桿 */
         #resizer-main { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; }
         @media (min-width: 801px), (orientation: landscape) { #resizer-main { width: 12px; cursor: col-resize; height: 100%; } #resizer-main::after { content: "⋮"; } }
         @media (max-width: 800px) and (orientation: portrait) { #resizer-main { height: 16px; cursor: row-resize; width: 100%; } #resizer-main::after { content: "⋯"; } }
@@ -44,7 +42,6 @@
         td { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; }
         tr.active-row td { background: #fffde7; font-weight: bold; border-left: 5px solid var(--gold); }
 
-        /* 地圖標籤 */
         .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); padding: 3px 7px; border-radius: 10px; font-weight: bold; background: rgba(255,255,255,0.85); border: 1px solid #888; white-space: nowrap; pointer-events: none; visibility: hidden; }
         .marker.highlight { background: var(--gold); color: white; border-color: #fff; z-index: 1000 !important; visibility: visible !important; }
         
@@ -57,18 +54,18 @@
 <div id="app-container">
     <div id="map-section">
         <div class="search-container">
-            <input type="text" id="search-input" placeholder="搜尋時間、事件、地點..." oninput="handleSearch()">
-            <button class="search-btn" onclick="toggleSearch()">🔍</button>
+            <input type="text" id="search-input" placeholder="搜尋關鍵字..." oninput="handleSearch()">
+            <button class="search-btn" id="search-toggle-btn" onclick="toggleSearch()">🔍</button>
         </div>
 
         <div class="fab-container">
             <button class="fab-main" onclick="toggleFab()">⚙️</button>
             <div id="fab-menu" class="fab-menu">
-                <button class="fab-item" onclick="pz.zoomIn()" title="放大">+</button>
-                <button class="fab-item" onclick="pz.zoomOut()" title="縮小">-</button>
-                <button class="fab-item" onclick="changeMarkerSize(1)" title="字體放大">A+</button>
-                <button class="fab-item" onclick="changeMarkerSize(-1)" title="字體縮小">A-</button>
-                <button class="fab-item" onclick="resetView()" title="重置視角">↺</button>
+                <button class="fab-item" onclick="pz.zoomIn()">+</button>
+                <button class="fab-item" onclick="pz.zoomOut()">-</button>
+                <button class="fab-item" onclick="changeMarkerSize(1)">A+</button>
+                <button class="fab-item" onclick="changeMarkerSize(-1)">A-</button>
+                <button class="fab-item" onclick="resetView()">↺</button>
             </div>
         </div>
 
@@ -115,16 +112,23 @@
 <script>
     let pz, eventData = [], filteredData = [], allCoords = []; 
     let currentFolder = '', currentMapIdx = -1, currentEventIdx = -1;
-    let baseMarkerFontSize = 13; // 初始字體大小
+    let baseMarkerFontSize = 13;
 
-    // 1. 搜尋功能
+    // 搜尋與圖示切換
     function toggleSearch() {
         const input = document.getElementById('search-input');
-        input.classList.toggle('open');
-        if (!input.classList.contains('open')) {
+        const btn = document.getElementById('search-toggle-btn');
+        
+        if (input.classList.contains('open')) {
+            // 如果已開啟，點擊則是「關閉並清除」
             input.value = '';
+            input.classList.remove('open');
+            btn.innerText = '🔍';
             handleSearch();
         } else {
+            // 開啟搜尋
+            input.classList.add('open');
+            btn.innerText = '❌';
             input.focus();
         }
     }
@@ -140,18 +144,13 @@
         renderTable(filteredData);
     }
 
-    // 2. 控制按鈕收折
-    function toggleFab() {
-        document.getElementById('fab-menu').classList.toggle('show');
-    }
+    function toggleFab() { document.getElementById('fab-menu').classList.toggle('show'); }
 
-    // 3. 字體大小調整
     function changeMarkerSize(delta) {
         baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta));
         applyMarkerStyles();
     }
 
-    // 4. 反向縮放邏輯：當 scale > 1，文字不再隨之變大
     function applyMarkerStyles() {
         const scale = pz ? pz.getScale() : 1;
         const antiScale = scale > 1 ? 1 / scale : 1;
@@ -161,7 +160,6 @@
         });
     }
 
-    // 雙向最優模糊比對
     function findBestMatch(target, db) {
         let best = null, minDiff = Infinity;
         for (const item of db) {
@@ -175,26 +173,38 @@
     }
 
     async function init() {
-        const res = await fetch(`folder.csv?t=${Date.now()}`);
-        const folders = parseCSV(await res.text()).slice(1);
-        const select = document.getElementById('folder-select');
-        select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
-        folders.forEach(f => {
-            if(f[0]) {
-                const opt = document.createElement('option');
-                opt.value = f[0]; opt.innerText = f[1] || f[0];
-                select.appendChild(opt);
+        try {
+            const res = await fetch(`folder.csv?t=${Date.now()}`);
+            const folders = parseCSV(await res.text()).slice(1);
+            const select = document.getElementById('folder-select');
+            select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
+            folders.forEach(f => {
+                if(f[0]) {
+                    const opt = document.createElement('option');
+                    opt.value = f[0]; opt.innerText = f[1] || f[0];
+                    select.appendChild(opt);
+                }
+            });
+
+            // 記憶功能：讀取最後一次的選擇
+            const lastFolder = localStorage.getItem('lastBibleFolder');
+            if (lastFolder) {
+                select.value = lastFolder;
+                loadProject(lastFolder);
             }
-        });
+        } catch(e) { console.error(e); }
     }
 
     async function loadProject(folder) {
         if (!folder) return;
-        currentFolder = folder; allCoords = [];
+        currentFolder = folder;
+        localStorage.setItem('lastBibleFolder', folder); // 儲存選擇
+        
+        allCoords = [];
         const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
         const rows = parseCSV(await dRes.text()).slice(1);
         eventData = rows.filter(r => r.length > 2).map((r, i) => ({
-            id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5], originalIdx: i
+            id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5]
         }));
         filteredData = [...eventData];
         renderTable(filteredData);
@@ -225,8 +235,8 @@
     async function selectEvent(displayIdx) {
         currentEventIdx = displayIdx;
         const item = filteredData[displayIdx];
-        const tbody = document.getElementById('table-body');
-        Array.from(tbody.rows).forEach((r, i) => r.className = i === displayIdx ? 'active-row' : '');
+        const rows = document.getElementById('table-body').rows;
+        Array.from(rows).forEach((r, i) => r.className = i === displayIdx ? 'active-row' : '');
         
         const locNames = item.loc.split('→').map(p => p.replace(/\(.*?\)/g, '').trim());
         let targetMapIdx = 1;
@@ -271,7 +281,8 @@
         });
         applyMarkerStyles();
         setTimeout(() => {
-            const occupied = Array.from(document.querySelectorAll('.marker.highlight')).map(m => m.getBoundingClientRect());
+            const highlights = Array.from(document.querySelectorAll('.marker.highlight'));
+            const occupied = highlights.map(m => m.getBoundingClientRect());
             document.querySelectorAll('.marker:not(.highlight)').forEach(m => {
                 const r = m.getBoundingClientRect();
                 if (occupied.some(o => !(r.right<o.left || r.left>o.right || r.bottom<o.top || r.top>o.bottom))) m.style.display = 'none';
@@ -326,15 +337,9 @@
     }
 
     function toggleInfo() {
-        const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow');
-        const resizer = document.getElementById('resizer-inner'), area = document.getElementById('info-area');
-        if (body.style.display === 'none') {
-            body.style.display = 'block'; resizer.style.display = 'flex';
-            area.style.flex = "0 0 45%"; arrow.innerText = '▼';
-        } else {
-            body.style.display = 'none'; resizer.style.display = 'none';
-            area.style.flex = "0 0 44px"; arrow.innerText = '▲';
-        }
+        const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), res = document.getElementById('resizer-inner'), area = document.getElementById('info-area');
+        if (body.style.display === 'none') { body.style.display = 'block'; res.style.display = 'flex'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; }
+        else { body.style.display = 'none'; res.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; }
     }
 
     function initResizers() {
