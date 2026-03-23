@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V8.3 - 路徑與搜尋進化版</title>
+    <title>亞伯拉罕史地互動地圖 V8.3 (精準微調版)</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
+        /* 完全保留 8.3 原始 CSS，一字不改 */
         :root { --gold: #c5a059; --dark: #2c3e50; --handle-bg: #ddd; }
         * { box-sizing: border-box; font-family: "微軟正黑體", sans-serif; -webkit-tap-highlight-color: transparent; }
         
@@ -18,12 +19,6 @@
         }
 
         #side-panel { width: 400px; background: #fff; display: flex; flex-direction: column; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
-        
-        /* 新增：控制區 (下拉選單與搜尋框) */
-        #controls-area { padding: 15px; border-bottom: 2px solid var(--gold); background: #fdfdfd; display: flex; flex-direction: column; gap: 10px; }
-        #folder-select, #search-input { width: 100%; padding: 8px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; }
-        #folder-select:focus, #search-input:focus { outline: none; border-color: var(--gold); }
-
         #table-container { flex-grow: 1; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; }
         th { background: var(--dark); color: var(--gold); position: sticky; top: 0; padding: 12px; font-weight: 500; text-align: left; }
@@ -63,10 +58,11 @@
 
 <div id="app-container">
     <div id="side-panel">
-        <div id="controls-area">
-            <select id="folder-select"><option value="">載入中...</option></select>
-            <input type="text" id="search-input" placeholder="🔍 搜尋事件、地點或內容...">
+        <div style="background: var(--dark); padding: 10px; flex-shrink: 0; border-bottom: 1px solid var(--gold);">
+            <select id="folder-select" style="width: 100%; padding: 6px; margin-bottom: 8px; border-radius: 4px; border: none; font-family: inherit;"></select>
+            <input type="text" id="search-input" placeholder="🔍 搜尋事件內容、地點或備註..." style="width: 100%; padding: 6px; border-radius: 4px; border: none; font-family: inherit;">
         </div>
+
         <div id="table-container">
             <table>
                 <thead><tr><th width="15%">序</th><th>事件內容</th></tr></thead>
@@ -104,58 +100,49 @@
 <script>
     let pz;
     let eventData = [];
-    let filteredEventData = []; // 新增：用於儲存搜尋過濾後的資料
+    let filteredEventData = []; // 新增：用於存放搜尋後的資料
     let coordData = [];
     let currentEventIdx = -1;
     let minScale = 0.1;
 
-    // 新增：初始化應用程式，讀取 folder.csv
+    // 【修改區塊】初始化讀取 folder.csv
     async function initApp() {
         try {
             const fRes = await fetch('folder.csv');
             const fText = await fRes.text();
-            const folders = parseCSV(fText, true).filter(f => f.folder_name);
+            const folders = parseCSV(fText, true);
             
             const select = document.getElementById('folder-select');
-            select.innerHTML = '';
             folders.forEach(f => {
+                if (!f.folder_name) return;
                 const opt = document.createElement('option');
                 opt.value = f.folder_name.trim();
                 opt.textContent = f.display_name || f.folder_name;
                 select.appendChild(opt);
             });
 
-            select.onchange = (e) => loadData(e.target.value);
-            
-            // 搜尋監聽器
-            document.getElementById('search-input').addEventListener('input', (e) => {
-                renderTable(e.target.value);
-            });
+            select.addEventListener('change', (e) => loadData(e.target.value));
+            document.getElementById('search-input').addEventListener('input', (e) => renderTable(e.target.value));
 
             if (folders.length > 0) loadData(folders[0].folder_name.trim());
         } catch (e) {
             console.error("載入 folder.csv 失敗", e);
-            document.getElementById('table-body').innerHTML = '<tr><td colspan="2">初始化失敗，請檢查 folder.csv</td></tr>';
         }
     }
 
-    // 修改：根據選擇的資料夾讀取檔案
+    // 【修改區塊】動態路徑讀取
     async function loadData(folder) {
-        document.getElementById('table-body').innerHTML = '<tr><td colspan="2" style="text-align:center;">資料載入中...</td></tr>';
-        document.getElementById('overlay-svg').innerHTML = ''; // 清空標註
+        document.getElementById('overlay-svg').innerHTML = ''; 
         document.getElementById('info-panel').style.display = 'none';
-        
+
         try {
             const r1 = await fetch(`${folder}/data.csv`);
-            const t1 = await r1.text();
-            eventData = parseCSV(t1, true);
+            eventData = parseCSV(await r1.text(), true);
 
-            // 修改：從舊版的 創世記真實經緯度表.csv 改為讀取對應資料夾的 coords_1.csv
+            // 配合您的 ZIP 結構，讀取 coords_1.csv (原 8.3 為 創世記真實經緯度表.csv)
             const r2 = await fetch(`${folder}/coords_1.csv`);
-            const t2 = await r2.text();
-            coordData = parseCSV(t2, true);
+            coordData = parseCSV(await r2.text(), true);
 
-            // 修改：切換地圖圖片
             const img = document.getElementById('base-map');
             img.onload = () => {
                 syncOverlay();
@@ -164,52 +151,44 @@
             };
             img.src = `${folder}/picture_1.png`;
 
-            renderTable(); // 初始不帶搜尋字串，顯示全部
+            renderTable(''); // 初始無搜尋條件
         } catch (e) {
-            console.error("讀取資料失敗", e);
-            document.getElementById('table-body').innerHTML = '<tr><td colspan="2" style="color:red; text-align:center;">讀取資料失敗，請確認檔案結構</td></tr>';
+            console.error("讀取資料夾失敗", e);
         }
     }
 
-    // 修改：加入搜尋過濾邏輯
+    // 【修改區塊】增加關鍵字搜尋過濾功能
     function renderTable(searchTerm = '') {
         const tb = document.getElementById('table-body');
         tb.innerHTML = '';
-        const term = searchTerm.toLowerCase();
+        const term = searchTerm.toLowerCase().trim();
 
         filteredEventData = eventData.filter(row => {
             if (!term) return true;
-            return (row['關鍵事件內容'] || '').toLowerCase().includes(term) ||
-                   (row['地點 (距離)'] || '').toLowerCase().includes(term) ||
-                   (row['備註 (關聯、釋義、補充)'] || '').toLowerCase().includes(term);
+            const content = `${row['關鍵事件內容'] || ''} ${row['地點 (距離)'] || ''} ${row['備註 (關聯、釋義、補充)'] || ''}`.toLowerCase();
+            return content.includes(term);
         });
-
-        if (filteredEventData.length === 0) {
-            tb.innerHTML = '<tr><td colspan="2" style="text-align:center;">找不到符合的事件</td></tr>';
-            return;
-        }
 
         filteredEventData.forEach((row, i) => {
             if (!row['關鍵事件內容']) return;
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${row['序號'] || i+1}</td><td>${row['關鍵事件內容']}</td>`;
-            // 注意這裡傳入的 index (i) 是 filteredEventData 裡的索引
+            tr.innerHTML = `<td>${row['序號']}</td><td>${row['關鍵事件內容']}</td>`;
+            // 注意：這裡是綁定 filteredEventData 的索引
             tr.onclick = () => selectEvent(i, tr);
             tb.appendChild(tr);
         });
     }
 
-    // 修改：改用 filteredEventData 取得選擇的事件，並移除自動縮放
     function selectEvent(idx, trRow) {
         currentEventIdx = idx;
-        const row = filteredEventData[idx];
+        const row = filteredEventData[idx]; // 改從 filteredEventData 取值
         
         document.querySelectorAll('#table-body tr').forEach(tr => tr.classList.remove('active'));
         if (trRow) trRow.classList.add('active');
 
         const info = document.getElementById('info-panel');
         info.style.display = 'block';
-        document.getElementById('info-title').textContent = `${row['序號'] ? row['序號']+'. ' : ''}${row['關鍵事件內容']}`;
+        document.getElementById('info-title').textContent = `${row['序號']}. ${row['關鍵事件內容']}`;
         
         let bodyHtml = '';
         if (row['時間資訊 (族長年齡依序並列)']) bodyHtml += `<p style="color:#666; margin:0 0 10px;">🕒 ${row['時間資訊 (族長年齡依序並列)']}</p>`;
@@ -221,7 +200,9 @@
         const locs = parseLocations(row['地點 (距離)']);
         let pts = [];
         locs.forEach(loc => {
-            const c = coordData.find(x => loc.includes(x['地名']));
+            // 【修改區塊】模糊搜尋優化：清除空白並允許雙向部分比對
+            const cleanLoc = loc.trim();
+            const c = coordData.find(x => x['地名'] && (cleanLoc.includes(x['地名']) || x['地名'].includes(cleanLoc)));
             if(c) pts.push(c);
         });
 
@@ -279,21 +260,21 @@
                 bg.setAttribute('rx', '4');
             });
 
-            // 修正：計算中心點並只進行 Pan (平移)，移除自動 Zoom
             const cx = sumX / pts.length;
             const cy = sumY / pts.length;
             const container = document.getElementById('map-section');
             const viewW = container.clientWidth, viewH = container.clientHeight;
             
-            // 這裡不再呼叫 pz.zoom(4)
-            const currentScale = pz.getScale(); 
-            const tx = (viewW / 2) - (cx * currentScale);
-            const ty = (viewH / 2) - (cy * currentScale);
-            pz.pan(tx, ty, {animate:true});
+            // 已依照先前需求：移除 pz.zoom(4) 自動縮放，僅保留視角移動 (Pan)
+            setTimeout(() => {
+                const currentScale = pz.getScale();
+                const tx = (viewW / 2) - (cx * currentScale);
+                const ty = (viewH / 2) - (cy * currentScale);
+                pz.pan(tx, ty, { animate: true });
+            }, 50);
         }
     }
 
-    // 輔助函式 (完全保留 8.3 邏輯)
     function parseLocations(str) {
         if (!str) return [];
         return str.replace(/\([^)]*\)/g, '').split(/→|,|，|、/).map(s => s.trim()).filter(s => s);
@@ -324,6 +305,7 @@
         return rows;
     }
 
+    // 【修改區塊】上下切換按鈕對應 filteredEventData
     function navEvent(step) {
         const n = currentEventIdx + step;
         if (n >= 0 && n < filteredEventData.length) {
@@ -351,10 +333,7 @@
         }
     }
 
-    function resetView() { 
-        pz.zoom(minScale);
-        setTimeout(() => { pz.pan(0, 0); }, 50); // 確保歸零
-    }
+    function resetView() { pz.reset(); }
 
     window.onload = () => {
         pz = Panzoom(document.getElementById('panzoom-element'), { 
@@ -363,7 +342,7 @@
         });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
         
-        initApp(); // 改為呼叫新版的初始化函式
+        initApp(); // 改為執行新版初始化
         initResizers();
         
         setTimeout(() => {
@@ -402,7 +381,6 @@
             updateMinScale();
         });
 
-        // 觸控支援
         r.addEventListener('touchstart', e => { dragging = true; r.classList.add('dragging'); });
         document.addEventListener('touchend', () => { dragging = false; r.classList.remove('dragging'); });
         document.addEventListener('touchmove', e => {
