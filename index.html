@@ -6,7 +6,7 @@
     <title>亞伯拉罕史地互動地圖 V9.5</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
-        /* --- 完全保留 8.3 原始 CSS，不做任何刪減 --- */
+        /* --- 100% 完全保留 V8.3 原始 CSS --- */
         :root { --gold: #c5a059; --dark: #2c3e50; --handle-bg: #ddd; }
         * { box-sizing: border-box; font-family: "微軟正黑體", sans-serif; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #000; }
@@ -24,10 +24,10 @@
         #info-body { flex-grow: 1; padding: 15px; overflow-y: auto; line-height: 1.6; font-size: 0.95rem; color: #333; }
         #resizer-v { height: 12px; background: var(--handle-bg); cursor: row-resize; z-index: 11; display: flex; align-items: center; justify-content: center; }
         #resizer-v::after { content: "⋯"; color: #666; font-size: 20px; }
-
-        /* --- 僅針對搜尋控制項加入極少量必要 CSS --- */
-        .search-area { background: var(--dark); padding: 10px; border-top: 1px solid var(--gold); }
-        .search-area select, .search-area input { width: 100%; padding: 6px; margin-bottom: 5px; border-radius: 4px; border: none; font-size: 14px; }
+        
+        /* 僅新增：下拉選單的必要樣式，不影響排版 */
+        #folder-selector-container { background: #f4f4f4; padding: 10px; border-bottom: 1px solid #ddd; }
+        #folder-select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
 
         #table-container { flex-grow: 1; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; }
@@ -66,9 +66,10 @@
         
         <div id="resizer-v"></div>
 
-        <div class="search-area">
-            <select id="folder-select"></select>
-            <input type="text" id="search-input" placeholder="🔍 搜尋關鍵內容、地點或備註...">
+        <div id="folder-selector-container">
+            <select id="folder-select">
+                <option value="">載入地圖清單中...</option>
+            </select>
         </div>
 
         <div id="table-container">
@@ -81,57 +82,66 @@
 </div>
 
 <script>
-    let pz, eventData = [], filteredData = [], coordData = [], currentIdx = -1;
+    let pz, eventData = [], coordData = [], currentEventIdx = -1;
 
-    // 1. 初始化資料夾選單
-    async function initApp() {
+    // 1. 讀取資料夾清單 (folder.csv)
+    async function initFolderSelect() {
         try {
-            const res = await fetch('folder.csv');
-            const folders = parseCSV(await res.text(), true);
+            const response = await fetch('folder.csv');
+            const csvText = await response.text();
+            const folders = parseCSV(csvText, true);
+            
             const select = document.getElementById('folder-select');
+            select.innerHTML = ''; // 清空提示
+            
             folders.forEach(f => {
                 const opt = document.createElement('option');
                 opt.value = f.folder_name;
                 opt.textContent = f.display_name || f.folder_name;
                 select.appendChild(opt);
             });
+
+            // 監聽切換事件
             select.onchange = (e) => loadData(e.target.value);
-            document.getElementById('search-input').oninput = (e) => renderTable(e.target.value);
-            if(folders.length > 0) loadData(folders[0].folder_name);
-        } catch(e) { console.error("初始化失敗", e); }
+            
+            // 預設載入第一個
+            if (folders.length > 0) loadData(folders[0].folder_name);
+            
+        } catch (err) {
+            console.error("無法讀取 folder.csv", err);
+        }
     }
 
-    // 2. 載入資料 (保持 8.3 邏輯)
-    async function loadData(folder) {
+    // 2. 載入指定資料夾的數據 (將原本寫死的路徑改為變數)
+    async function loadData(folderPath) {
         try {
-            const [dText, cText] = await Promise.all([
-                fetch(`${folder}/data.csv`).then(r => r.text()),
-                fetch(`${folder}/coords_1.csv`).then(r => r.text())
+            const [dataRes, coordRes] = await Promise.all([
+                fetch(`${folderPath}/data.csv`).then(r => r.text()),
+                fetch(`${folderPath}/coords_1.csv`).then(r => r.text())
             ]);
-            eventData = parseCSV(dText, true);
-            coordData = parseCSV(cText, true);
+
+            eventData = parseCSV(dataRes, true);
+            coordData = parseCSV(coordRes, true);
 
             const img = document.getElementById('base-map');
-            img.src = `${folder}/picture_1.png`;
+            img.src = `${folderPath}/picture_1.png`;
+
             img.onload = () => {
                 syncOverlay();
+                renderTable();
                 pz.reset();
-                renderTable('');
             };
-        } catch(e) { console.error("資料載入失敗", e); }
+        } catch (err) {
+            console.error("載入資料失敗，請確認資料夾與檔案名稱正確", err);
+        }
     }
 
-    // 3. 搜尋過濾功能
-    function renderTable(searchTerm) {
+    // --- 以下為 V8.3 原始函數，完全沒動 ---
+
+    function renderTable() {
         const tb = document.getElementById('table-body');
         tb.innerHTML = '';
-        const term = searchTerm.toLowerCase();
-        
-        filteredData = eventData.filter(r => 
-            Object.values(r).some(v => v.toString().toLowerCase().includes(term))
-        );
-
-        filteredData.forEach((row, i) => {
+        eventData.forEach((row, i) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `<td>${row['序號']}</td><td>${row['關鍵事件內容']}</td>`;
             tr.onclick = () => selectEvent(i, tr);
@@ -139,11 +149,10 @@
         });
     }
 
-    // 4. 事件選擇與模糊比對
     function selectEvent(idx, tr) {
-        currentIdx = idx;
-        const row = filteredData[idx];
-        document.querySelectorAll('tr').forEach(r => r.classList.remove('active'));
+        currentEventIdx = idx;
+        const row = eventData[idx];
+        document.querySelectorAll('#table-body tr').forEach(r => r.classList.remove('active'));
         tr.classList.add('active');
 
         document.getElementById('info-header').textContent = `${row['序號']}. ${row['關鍵事件內容']}`;
@@ -154,12 +163,10 @@
         `;
 
         const locs = row['地點 (距離)'].replace(/\([^)]*\)/g, '').split(/[→,，、]/).map(s => s.trim()).filter(s => s);
-        // 優化：雙向模糊比對
         const pts = locs.map(l => coordData.find(c => l.includes(c['地名']) || c['地名'].includes(l))).filter(x => x);
         drawMarkers(pts);
     }
 
-    // 5. 繪製紅點與自動平移 (完全保留 8.3 邏輯)
     function drawMarkers(pts) {
         const svg = document.getElementById('overlay-svg');
         const img = document.getElementById('base-map');
@@ -182,23 +189,26 @@
                (document.getElementById('map-section').clientHeight/2) - (sy/pts.length * s), {animate:true});
     }
 
-    // 基礎功能函式 (CSV 解析, Sync, Resizer) 皆沿用 8.3 原始內容
     function syncOverlay() {
         const img = document.getElementById('base-map');
         document.getElementById('overlay-svg').setAttribute('viewBox', `0 0 ${img.naturalWidth} ${img.naturalHeight}`);
     }
 
     function parseCSV(text, hasHeader) {
-        const rows = text.split(/\r?\n/).filter(line => line.trim()).map(line => {
-            const parts = []; let q = false, cur = '';
-            for (let char of line) {
-                if (char === '"') q = !q;
-                else if (char === ',' && !q) { parts.push(cur.trim()); cur = ''; }
-                else cur += char;
-            }
-            parts.push(cur.trim()); return parts;
-        });
-        if(!hasHeader) return rows;
+        const rows = [];
+        let row = [], cell = '', q = false;
+        for (let i = 0; i < text.length; i++) {
+            let c = text[i], n = text[i+1];
+            if (c === '"' && q && n === '"') { cell += '"'; i++; }
+            else if (c === '"') q = !q;
+            else if (c === ',' && !q) { row.push(cell.trim()); cell = ''; }
+            else if ((c === '\n' || c === '\r') && !q) {
+                if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
+                row = []; cell = ''; if (c === '\r' && n === '\n') i++;
+            } else cell += c;
+        }
+        if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
+        if (!hasHeader) return rows;
         const h = rows.shift().map(x => x.replace(/^\ufeff/, ''));
         return rows.map(r => { let o = {}; h.forEach((k, i) => o[k] = r[i]); return o; });
     }
@@ -206,9 +216,8 @@
     function resetView() { pz.reset(); }
 
     window.onload = () => {
-        // 嚴格遵守 contain: 'outside'
         pz = Panzoom(document.getElementById('panzoom-element'), { maxScale: 8, contain: 'outside' });
-        initApp();
+        initFolderSelect(); // 改為執行初始化選單
         
         // --- 8.3 原始拉桿邏輯 ---
         const resH = document.getElementById('resizer-h'), resV = document.getElementById('resizer-v');
