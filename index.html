@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.6.1</title>
+    <title>亞伯拉罕史地互動地圖 V10.6.2</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -21,7 +21,7 @@
         #panzoom-element { display: inline-block; position: relative; }
         #bg-map { display: block; max-width: none; user-select: none; }
         
-        /* UI 控制鈕 */
+        /* UI 按鈕 */
         .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
         .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .fab-main svg { width: 22px; height: 22px; fill: var(--brown); }
@@ -34,10 +34,16 @@
         #search-input.open { width: 150px; opacity: 1; padding: 0 10px; margin-right: 6px; }
         .search-btn { width: 38px; height: 38px; border-radius: 10px; border: 2px solid var(--brown); background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-        /* 標籤渲染：區域 vs 城市 */
-        .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 10; transition: opacity 0.3s; }
+        /* 標籤渲染 */
+        .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 10; }
         .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; margin-bottom: 2px; }
-        .marker .label { padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; color: var(--brown); transition: transform 0.2s; }
+        
+        /* 核心修復：預設透明度為 0，防止切換時地名全閃現 */
+        .marker .label { 
+            opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); 
+            border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; 
+            color: var(--brown); transition: opacity 0.2s, transform 0.2s; 
+        }
         
         /* 區域級 (Size > 2) */
         .marker.region-type .dot { display: none; }
@@ -46,10 +52,11 @@
             color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; letter-spacing: 2px;
         }
 
-        /* 呼吸感高亮效果 */
+        /* 加快呼吸感動畫 (0.8s) */
         .marker.highlight { z-index: 1000 !important; }
         .marker.highlight .label {
-            animation: labelBreathe 1.2s infinite alternate ease-in-out;
+            opacity: 1 !important; /* 高亮點必定顯示 */
+            animation: labelBreathe 0.8s infinite alternate ease-in-out;
             background: #fffde7 !important; 
             border: 2px solid #d32f2f !important; 
             color: #d32f2f !important;
@@ -60,18 +67,17 @@
             to { transform: translateY(-6px) scale(1.05); }
         }
 
-        /* 面板控制 */
+        /* 面板與選單 */
         #resizer-main { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; }
         @media (min-width: 801px), (orientation: landscape) { #resizer-main { width: 12px; cursor: col-resize; height: 100%; } #resizer-main::after { content: "⋮"; } }
         @media (max-width: 800px) and (orientation: portrait) { #resizer-main { height: 16px; cursor: row-resize; width: 100%; } #resizer-main::after { content: "⋯"; } }
         
         #side-panel { background: white; display: flex; flex-direction: column; overflow: hidden; }
         #folder-nav { padding: 10px; background: #eee; border-bottom: 1px solid #ccc; }
-        #folder-select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; } /* 修復寬度 */
+        #folder-select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
         
         #info-area { display: none; flex-direction: column; background: #fff; overflow: hidden; flex: 0 0 45%; }
         #info-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        #info-header button { padding: 4px 10px; background: var(--gold); border: none; color: white; cursor: pointer; }
         #info-body { padding: 15px; overflow-y: auto; flex: 1; font-size: 14px; border-bottom: 1px solid #eee; }
         #resizer-inner { height: 10px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; }
         #list-container { flex: 1; overflow-y: auto; }
@@ -237,7 +243,8 @@
         
         applyMarkerStyles();
         if (logic.points.length) flyTo(logic.points);
-        setTimeout(refreshCollision, 100);
+        // 先繪製完畢，再執行碰撞檢查與顯示標籤
+        setTimeout(refreshCollision, 50); 
     }
 
     function refreshCollision() {
@@ -252,11 +259,16 @@
         const occupied = [];
         markers.forEach(m => {
             const label = m.querySelector('.label');
-            label.style.opacity = "1";
             const rect = label.getBoundingClientRect();
             const overlap = occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom));
-            if (overlap && !m.classList.contains('highlight')) label.style.opacity = "0";
-            else occupied.push(rect);
+            
+            // 碰撞檢查後才顯示，解決全閃現問題
+            if (overlap && !m.classList.contains('highlight')) {
+                label.style.opacity = "0";
+            } else {
+                label.style.opacity = "1";
+                occupied.push(rect);
+            }
         });
     }
 
