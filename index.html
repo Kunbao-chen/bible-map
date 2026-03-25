@@ -352,7 +352,7 @@
         if (!img.offsetWidth) return;
         let tx = 0, ty = 0; pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
         const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight;
-        const sc = pz.getScale()/2;
+        const sc = pz.getScale();
         const targetX = (c.clientWidth / 2) - (px * sc);
         const targetY = (c.clientHeight / 2) - (py * sc);
         pz.pan(targetX, targetY, { animate: true });
