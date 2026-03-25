@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V11.1</title>
+    <title>亞伯拉罕史地互動地圖 V11.2</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -12,10 +12,14 @@
         body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; font-family: sans-serif; }
         
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
+        
+        /* 修改：移除直接隱藏拉桿，針對手機直立做彈性排版 */
         @media (max-width: 800px) and (orientation: portrait) {
             #app-container { flex-direction: column; }
-            #side-panel { width: 100% !important; height: 50% !important; flex: none !important; }
-            #map-section { height: 50% !important; flex: none !important; }
+            #side-panel { width: 100% !important; height: 50%; flex: none; }
+            #map-section { height: auto; flex: 1; }
+            #resizer-main { width: 100% !important; height: 12px !important; cursor: row-resize !important; }
+            #resizer-main::after { content: "⋯"; }
         }
 
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
@@ -45,7 +49,6 @@
         /* 佈局組件 */
         #resizer-main { background: var(--handle-bg); z-index: 1100; width: 12px; cursor: col-resize; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         #resizer-main::after { content: "⋮"; color: #999; }
-        @media (max-width: 800px) { #resizer-main { display: none; } }
 
         #side-panel { width: 350px; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; z-index: 1500; }
         #folder-nav { flex-shrink: 0; padding: 5px; background: #eee; z-index: 10; }
@@ -116,12 +119,15 @@
 <script>
     let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
 
-    // --- 1. 搜尋邏輯：全文命中且依序號排序 ---
+    // --- 修改 5: 搜尋結束時維持事件選取狀態 ---
     function handleSearch(keyword) {
         const input = document.getElementById('search-input');
         if (keyword !== undefined) { input.value = keyword; input.classList.add('open'); }
         const term = input.value.trim().toLowerCase();
         document.getElementById('search-clear').style.display = term ? 'block' : 'none';
+
+        // 記下搜尋前選中的事件 ID
+        const activeEventId = (currentEventIdx >= 0 && filteredData[currentEventIdx]) ? filteredData[currentEventIdx].id : null;
 
         if (!term) {
             filteredData = [...eventData];
@@ -129,48 +135,84 @@
             filteredData = eventData.filter(item => item._searchStr.includes(term))
                                     .sort((a, b) => parseInt(a.id) - parseInt(b.id));
         }
+        
         renderTable(filteredData);
-        if (term && filteredData.length > 0) selectEvent(0);
+        
+        if (term && filteredData.length > 0) {
+            selectEvent(0);
+        } else if (!term && activeEventId !== null) {
+            // 取消搜尋時，恢復該 ID 事件的高亮狀態並捲動到該列 (不重新飛行動畫)
+            const restoredIdx = filteredData.findIndex(item => item.id === activeEventId);
+            if (restoredIdx !== -1) {
+                currentEventIdx = restoredIdx;
+                Array.from(document.getElementById('table-body').rows).forEach((r, i) => {
+                    if (i === restoredIdx) {
+                        r.className = 'active-row';
+                        r.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else {
+                        r.className = '';
+                    }
+                });
+            }
+        }
     }
 
     function clearSearch() { document.getElementById('search-input').value = ''; handleSearch(); }
     function toggleSearch() { const i = document.getElementById('search-input'); i.classList.toggle('open'); if(i.classList.contains('open')) i.focus(); }
 
-    // --- 2. 權重與避讓：Size優先，顯示才佔位 ---
+    // --- 修改 3 & 4: 嚴格權重排序、佔位與點擊邏輯 ---
     function refreshCollision() {
         const markers = Array.from(document.querySelectorAll('.marker'));
         
-        // 核心排序：當前點選 > Size小優先 > 頻率高優先
+        // 嚴格複合排序：當前事件 > Size數值小 > csv出現次數高
         markers.sort((a, b) => {
-            if (a.classList.contains('highlight')) return -1;
-            if (b.classList.contains('highlight')) return 1;
-            const sA = parseInt(a.dataset.size) || 0;
-            const sB = parseInt(b.dataset.size) || 0;
-            if (sA !== sB) return sA - sB; // Size 越小越排前
-            return (locFreq[b.dataset.name] || 0) - (locFreq[a.dataset.name] || 0); // 次數多排前
+            const aHigh = a.classList.contains('highlight') ? 1 : 0;
+            const bHigh = b.classList.contains('highlight') ? 1 : 0;
+            if (aHigh !== bHigh) return bHigh - aHigh; 
+
+            const sA = parseInt(a.dataset.size) || 999; 
+            const sB = parseInt(b.dataset.size) || 999;
+            if (sA !== sB) return sA - sB; 
+
+            const fA = locFreq[a.dataset.name] || 0;
+            const fB = locFreq[b.dataset.name] || 0;
+            return fB - fA; 
         });
 
         const occupied = [];
         markers.forEach(m => {
             const label = m.querySelector('.label');
+            // 短暫恢復不透明度，以確保getBoundingClientRect算到正確矩形
+            label.style.opacity = "1";
+            
             const rect = label.getBoundingClientRect();
-            // 碰撞檢測邏輯
-            const isOverlap = occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom));
+            // 加入 2px 緩衝區避免緊密貼合誤判
+            const buffer = 2;
+            const isOverlap = occupied.some(o => !(
+                (rect.right + buffer) < o.left || 
+                (rect.left - buffer) > o.right || 
+                (rect.bottom + buffer) < o.top || 
+                (rect.top - buffer) > o.bottom
+            ));
             
             if (isOverlap && !m.classList.contains('highlight')) {
+                // 不佔位也不允許點擊
                 label.style.opacity = "0";
-                // 重要：不顯示的地名不加入 occupied 陣列，不佔位
+                m.style.pointerEvents = "none"; // 封鎖整個marker (含灰點) 點擊事件
             } else {
+                // 顯示佔位並允許點擊
                 label.style.opacity = "1";
-                occupied.push(rect); // 確定顯示後才佔位
+                m.style.pointerEvents = "auto";
+                occupied.push(rect); 
             }
         });
     }
 
-    // --- 3. 字體縮放：s > 1 抗縮放；s <= 1 隨地圖縮小 ---
+    // --- 修改 2: 字體縮放條件修正 ---
     function applyMarkerStyles() {
         if (!pz) return;
         const s = pz.getScale();
+        // 確保倍率小於等於1時，抗縮放因子為1，讓字形隨地圖原生縮小
         const antiScale = s > 1 ? (1 / s) : 1; 
         document.querySelectorAll('.marker').forEach(m => {
             const gain = parseInt(m.dataset.size) || 0;
@@ -244,7 +286,6 @@
                 m.className = 'marker';
                 m.dataset.name = data.n;
                 m.innerHTML = `<div class="dot"></div><div class="label">${data.n}</div>`;
-                // 修改：點擊地名同步更新搜尋框
                 m.onclick = (e) => { e.stopPropagation(); handleSearch(data.n); };
                 ml.appendChild(m);
             }
@@ -364,22 +405,41 @@
         const last = localStorage.getItem('lastBibleFolder');
         if (last) { select.value = last; loadProject(last); }
         
-        // 主拉桿 (左右)
+        // --- 修改 1: 主拉桿兼顧水平與垂直推移 ---
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
-        rMain.onmousedown = (e) => {
-            const startX = e.clientX, startW = side.offsetWidth;
-            document.onmousemove = (ev) => {
-                side.style.width = Math.max(200, startW + (startX - ev.clientX)) + 'px';
+        rMain.onmousedown = rMain.ontouchstart = (e) => {
+            e.preventDefault(); // 防止手機預設滾動行為
+            const isPortrait = window.matchMedia("(max-width: 800px) and (orientation: portrait)").matches;
+            const startX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+            const startY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            const startW = side.offsetWidth;
+            const startH = side.offsetHeight;
+            
+            const moveHandler = (ev) => {
+                const clientX = ev.clientX || (ev.touches ? ev.touches[0].clientX : 0);
+                const clientY = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
+                
+                if (isPortrait) {
+                    // 直立狀態下：Flexbox 是由上而下排，所以越往上拖 (Y值變小) side-panel 高度增加
+                    const newH = startH + (startY - clientY);
+                    side.style.height = Math.max(150, newH) + 'px';
+                } else {
+                    // 電腦或橫置手機狀態下：左右拖曳調整 width
+                    const newW = startW + (startX - clientX);
+                    side.style.width = Math.max(200, newW) + 'px';
+                }
                 syncOverlay(); updateMinScale(); refreshCollision();
             };
-            document.onmouseup = () => document.onmousemove = null;
+            document.onmousemove = document.ontouchmove = moveHandler;
+            document.onmouseup = document.ontouchend = () => document.onmousemove = document.ontouchmove = null;
         };
 
         // 詳情區拉桿 (上下)
         const rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
         rInner.onmousedown = rInner.ontouchstart = (e) => {
             e.preventDefault();
-            const startY = e.clientY || e.touches[0].clientY, startH = info.offsetHeight;
+            const startY = e.clientY || (e.touches ? e.touches[0].clientY : 0); 
+            const startH = info.offsetHeight;
             const moveHandler = (ev) => {
                 const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
                 info.style.height = Math.max(44, startH + (y - startY)) + 'px';
