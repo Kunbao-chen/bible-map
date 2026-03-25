@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.7.6a</title>
+    <title>亞伯拉罕史地互動地圖 V10.7.11</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -24,6 +24,14 @@
         #panzoom-element { display: inline-block; position: relative; }
         #bg-map { display: block; max-width: none; user-select: none; }
         
+        /* [V10.7.11 手術刀追加] 除錯資訊樣式 */
+        #debug-info {
+            position: absolute; right: 10px; bottom: 10px; z-index: 3000;
+            background: rgba(0,0,0,0.6); color: #fff; padding: 4px 8px;
+            border-radius: 4px; font-family: monospace; font-size: 11px;
+            pointer-events: none; white-space: nowrap;
+        }
+
         .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
         .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; margin-bottom: 2px; }
         .marker .label { 
@@ -32,7 +40,6 @@
             color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none;
         }
         .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; }
-
         .marker.highlight { z-index: 1000 !important; }
         .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
         @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
@@ -43,11 +50,7 @@
         #search-input { width: 0; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border: none; background: transparent; height: 32px; outline: none; font-size: 14px; }
         #search-input.open { width: 160px; opacity: 1; padding: 0 8px; }
         .search-btn { width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: transparent; border: none; }
-
-        #search-history { 
-            display: none; width: 200px; background: white; border: 1px solid #ccc; border-radius: 8px; 
-            margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow-y: auto; max-height: 30dvh; 
-        }
+        #search-history { display: none; width: 200px; background: white; border: 1px solid #ccc; border-radius: 8px; margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow-y: auto; max-height: 30dvh; }
         .history-item { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
         .history-item:hover { background: #f9f9f9; }
 
@@ -70,6 +73,8 @@
 
 <div id="app-container">
     <div id="map-section">
+        <div id="debug-info">Scale: 1.00 | Img: 0, 0 | Mouse: 0, 0</div>
+
         <div class="search-container">
             <div class="search-bar-wrapper">
                 <div id="search-clear" class="search-clear" onclick="clearSearch()">×</div>
@@ -119,6 +124,24 @@
 <script>
     let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
     let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
+
+    /* [V10.7.11 手術刀追加] 更新除錯欄內容 */
+    function updateDebugDisplay(mouseX, mouseY) {
+        const debug = document.getElementById('debug-info');
+        const img = document.getElementById('bg-map');
+        const sc = pz ? pz.getScale() : 1;
+        
+        // 滑鼠座標相對於容器 (map-section)
+        const mx = mouseX || 0;
+        const my = mouseY || 0;
+
+        // 計算滑鼠位置在圖片上的原始像素座標 (Scale=1)
+        const rect = img.getBoundingClientRect();
+        const imgPx = Math.round((mx - rect.left) / sc);
+        const imgPy = Math.round((my - rect.top) / sc);
+
+        debug.innerText = `Scale: ${sc.toFixed(2)} | Img: ${imgPx}, ${imgPy}px | Mouse: ${mx}, ${my}`;
+    }
 
     function toggleSearch() {
         const input = document.getElementById('search-input');
@@ -371,9 +394,22 @@
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
+        const mapSection = document.getElementById('map-section');
+        
         pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
-        el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
-        document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
+        
+        /* [V10.7.11 手術刀追加] 監聽事件以更新除錯資訊 */
+        el.addEventListener('panzoomchange', () => { 
+            applyMarkerStyles(); 
+            refreshCollision(); 
+            updateDebugDisplay(); 
+        });
+
+        mapSection.addEventListener('mousemove', (e) => {
+            updateDebugDisplay(e.clientX, e.clientY);
+        });
+
+        mapSection.addEventListener('wheel', pz.zoomWithWheel);
         
         const res = await fetch(`folder.csv?t=${Date.now()}`);
         const folders = parseCSV(await res.text()).slice(1);
