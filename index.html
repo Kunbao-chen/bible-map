@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.7.15</title>
+    <title>亞伯拉罕史地互動地圖 V10.7.15a</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -121,38 +121,41 @@
         debug.innerText = `Scale: ${sc.toFixed(2)} | MouseImg: ${mouseImgPx}, ${mouseImgPy}px | MouseBox: ${mx.toFixed(0)}, ${my.toFixed(0)} | TargetImg: ${targetInfo}`;
     }
 
-    /* 手術刀協議 V10.7.16: 修正中心縮放物理偏移補償 */
+/* 手術刀協議 V10.7.18: 抵銷 transform-origin: center 偏移量 */
 function flyTo(pts) {
-    const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
-    if (!img.offsetWidth || !img.naturalWidth) return;
+    const img = document.getElementById('bg-map');
+    const container = document.getElementById('map-section');
+    if (!img.offsetWidth) return;
     
-    // 1. 計算目標點在原始圖片上的中心座標 (px, py)
+    // 1. 取得當前縮放倍率
+    const sc = pz.getScale();
+    
+    // 2. 容器中心點 (視窗中心)
+    const viewCenterX = container.clientWidth / 2;
+    const viewCenterY = container.clientHeight / 2;
+
+    // 3. 計算地圖上的目標座標 (基於 1408x768 基準)
     let tx = 0, ty = 0; 
     pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
-    
-    // 使用 naturalWidth (1408) 與 naturalHeight (768) 確保計算基準與地圖檔一致
-    const px = (tx / pts.length / 100) * img.naturalWidth;
-    const py = (ty / pts.length / 100) * img.naturalHeight;
-    
-    const sc = pz.getScale();
-    const viewCenterX = c.clientWidth / 2;
-    const viewCenterY = c.clientHeight / 2;
+    const px = (tx / pts.length / 100) * 1408;
+    const py = (ty / pts.length / 100) * 768;
 
-    // 2. 核心物理補償：
-    // Panzoom 以中心縮放時，左上角 (0,0) 會產生 (Width * (1 - Scale) / 2) 的位移
-    // 我們必須減去這個位移量，才能抵銷縮放產生的「中心拉力」
-    const originOffsetX = (img.naturalWidth * (1 - sc)) / 2;
-    const originOffsetY = (img.naturalHeight * (1 - sc)) / 2;
-    
-    // 3. 最終 Pan 座標 = 容器中心 - (目標點比例位置) - 縮放原點偏移
-    const targetX = viewCenterX - (px * sc) - originOffsetX;
-    const targetY = viewCenterY - (py * sc) - originOffsetY;
-    
+    // 4. 計算補償值：抵銷 center 縮放導致的原點位移
+    // 公式邏輯：(圖片基準尺寸 * (縮放倍率 - 1)) / 2
+    const offsetX = (1408 * (sc - 1)) / 2;
+    const offsetY = (768 * (sc - 1)) / 2;
+
+    // 5. 最終平移目標 = 容器中心 - (縮放後的座標) + 補償位移
+    const targetX = viewCenterX - (px * sc) + offsetX;
+    const targetY = viewCenterY - (py * sc) + offsetY;
+
+    // 執行平移
     pz.pan(targetX, targetY, { animate: true });
     
-    // 延遲更新調試信息以確保讀取到最終位置
+    // 更新除錯資訊 (可選)
     setTimeout(updateDebugDisplay, 300);
-}
+}   
+
 
     function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) input.focus(); else hideHistory(); }
     function handleSearch(keyword) {
