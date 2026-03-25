@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.7.1</title>
+    <title>亞伯拉罕史地互動地圖 V10.7.2</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -11,7 +11,7 @@
         * { box-sizing: border-box; }
         body { 
             margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; 
-            background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium\", sans-serif; 
+            background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium", sans-serif; 
         }
         
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
@@ -256,17 +256,11 @@
 
     function flyTo(pts) {
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
-        const sc = pz.getScale();
         let tx = 0, ty = 0;
         pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
-        
-        // 步驟 1：計算目標點在原始圖片上的像素座標 (px, py)
-        const px = (tx / pts.length / 100) * img.offsetWidth;
-        const py = (ty / pts.length / 100) * img.offsetHeight;
-
-        // 步驟 2 & 3：使用修正公式計算前往座標，並由 Panzoom 內建 contain: 'outside' 進行邊界限制
-        // 手術刀修正：公式邏輯改為 容器中心 - (目標點 * 當前倍率)
-        pz.pan((c.clientWidth / 2) - (px * sc), (c.clientHeight / 2) - (py * sc), { animate: true });
+        const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight, sc = pz.getScale();
+        // 手術刀協議修正：修正偏心問題，同時觸發 contain: outside 保護機制
+        pz.pan((c.clientWidth/2) - (px * sc), (c.clientHeight/2) - (py * sc), { animate: true });
     }
 
     function parseCSV(t) {
