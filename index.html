@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.7.q</title>
+    <title>亞伯拉罕史地互動地圖 V10.7.4</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -359,7 +359,7 @@
         const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight;
         const sc = pz.getScale();
         // V10.7.4 修正：採用 (c.clientWidth / 2) - (px * sc) 公式，邊界保護交由 contain: 'outside' 處理
-        pz.pan((c.clientWidth / 2) - (px / sc), (c.clientHeight / 2) - (py / sc), { animate: true });
+        pz.pan((c.clientWidth / 2) - (px * sc), (c.clientHeight / 2) - (py * sc), { animate: true });
     }
 
     function updateMinScale() {
