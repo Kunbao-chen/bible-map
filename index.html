@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.7.6</title>
+    <title>亞伯拉罕史地互動地圖 V10.7.10</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -350,11 +350,19 @@
     function flyTo(pts) {
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
         if (!img.offsetWidth) return;
+        
+        // 1. 計算目標點在原始圖片 (1:1) 的像素位置
         let tx = 0, ty = 0; pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
-        const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight;
-        const sc = pz.getScale();
-        const targetX = (c.clientWidth / 2) - (px * sc);
-        const targetY = (c.clientHeight / 2) - (py * sc);
+        const px = (tx/pts.length/100) * img.offsetWidth;
+        const py = (ty/pts.length/100) * img.offsetHeight;
+        
+        // 2. 歸一化對位：使用常數補償，讓容器自我校正倍率認知差異
+        const biasX = (c.clientWidth - img.offsetWidth) / 2;
+        const biasY = (c.clientHeight - img.offsetHeight) / 2;
+
+        const targetX = biasX + (img.offsetWidth / 2 - px);
+        const targetY = biasY + (img.offsetHeight / 2 - py);
+
         pz.pan(targetX, targetY, { animate: true });
     }
 
