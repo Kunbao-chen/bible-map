@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.7.0</title>
+    <title>亞伯拉罕史地互動地圖 V10.8.0b</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -38,10 +38,10 @@
         .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
         @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
 
-        /* 搜尋介面修正：叉叉置於左側 */
+        /* 搜尋介面修正 */
         .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
         .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); padding: 2px; }
-        .search-clear { cursor: pointer; display: none; padding: 0 8px; color: var(--brown); font-weight: bold; font-size: 18px; order: -1; } /* order -1 確保在最左 */
+        .search-clear { cursor: pointer; display: none; padding: 0 8px; color: var(--brown); font-weight: bold; font-size: 18px; order: -1; }
         #search-input { width: 0; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border: none; background: transparent; height: 32px; outline: none; font-size: 14px; }
         #search-input.open { width: 160px; opacity: 1; padding: 0 8px; }
         .search-btn { width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: transparent; border: none; }
@@ -66,6 +66,9 @@
 
         .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
         .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        
+        /* 10.8.0b 除錯文字樣式 */
+        #debug-info { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: #0f0; padding: 5px 10px; font-family: monospace; font-size: 12px; z-index: 3000; pointer-events: none; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -97,6 +100,8 @@
                 <div id="marker-layer"></div>
             </div>
         </div>
+        
+        <div id="debug-info">Scale: -- | PanX: -- | PanY: --</div>
     </div>
     
     <div id="resizer-main"></div>
@@ -129,90 +134,35 @@
         if (isOpening) { input.focus(); } else { hideHistory(); }
     }
 
-    // --- 高效率計次搜尋與排序 (Q3, Q5) ---
     function handleSearch(keyword) {
         const input = document.getElementById('search-input');
         const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase();
         const clearBtn = document.getElementById('search-clear');
-        
         clearBtn.style.display = term ? 'block' : 'none';
-
-        if (!term) {
-            filteredData = [...eventData];
-        } else {
+        if (!term) { filteredData = [...eventData]; } else {
             const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(safeTerm, 'gi');
-
-            filteredData = eventData
-                .map(item => {
-                    const match = item._searchStr.match(regex);
-                    return { ...item, score: match ? match.length : 0 };
-                })
-                .filter(item => item.score > 0)
-                .sort((a, b) => b.score - a.score);
+            filteredData = eventData.map(item => { const match = item._searchStr.match(regex); return { ...item, score: match ? match.length : 0 }; })
+                .filter(item => item.score > 0).sort((a, b) => b.score - a.score);
         }
-        
         renderTable(filteredData);
         if (term && keyword === undefined) saveHistory(term);
-        
-        // 搜尋完畢主動點選第一項
-        if (term && filteredData.length > 0) {
-            selectEvent(0);
-            document.getElementById('list-container').scrollTop = 0;
-        }
+        if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; }
     }
 
     function clearSearch() {
         const lastId = currentEventIdx !== -1 ? filteredData[currentEventIdx].id : null;
         const input = document.getElementById('search-input');
-        input.value = '';
-        input.classList.remove('open');
-        document.getElementById('search-clear').style.display = 'none';
-        hideHistory();
-        
-        handleSearch(""); // 重置列表
-        
-        // 保留最後選取的事件 (Q4)
-        if (lastId) {
-            const newIdx = filteredData.findIndex(d => d.id === lastId);
-            if (newIdx !== -1) {
-                selectEvent(newIdx);
-                const r = document.getElementById('table-body').rows[newIdx];
-                if(r) r.scrollIntoView({block:'center'});
-            }
-        }
+        input.value = ''; input.classList.remove('open');
+        document.getElementById('search-clear').style.display = 'none'; hideHistory();
+        handleSearch("");
+        if (lastId) { const newIdx = filteredData.findIndex(d => d.id === lastId); if (newIdx !== -1) { selectEvent(newIdx); const r = document.getElementById('table-body').rows[newIdx]; if(r) r.scrollIntoView({block:'center'}); } }
     }
 
-    function saveHistory(term) {
-        if (!term.trim()) return;
-        searchHistory = [term, ...searchHistory.filter(h => h !== term)].slice(0, 10);
-        localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory));
-        renderHistory();
-    }
-
-    function renderHistory() {
-        const panel = document.getElementById('search-history');
-        panel.innerHTML = searchHistory.map(h => `
-            <div class="history-item" onclick="useHistory('${h}')">
-                <span>${h}</span>
-                <span style="color:#ccc" onclick="deleteHistory(event, '${h}')">×</span>
-            </div>
-        `).join('');
-    }
-
-    function useHistory(h) {
-        document.getElementById('search-input').value = h;
-        handleSearch(h);
-        hideHistory();
-    }
-
-    function deleteHistory(e, h) {
-        e.stopPropagation();
-        searchHistory = searchHistory.filter(item => item !== h);
-        localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory));
-        renderHistory();
-    }
-
+    function saveHistory(term) { if (!term.trim()) return; searchHistory = [term, ...searchHistory.filter(h => h !== term)].slice(0, 10); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
+    function renderHistory() { const panel = document.getElementById('search-history'); panel.innerHTML = searchHistory.map(h => `<div class="history-item" onclick="useHistory('${h}')"><span>${h}</span><span style="color:#ccc" onclick="deleteHistory(event, '${h}')">×</span></div>`).join(''); }
+    function useHistory(h) { document.getElementById('search-input').value = h; handleSearch(h); hideHistory(); }
+    function deleteHistory(e, h) { e.stopPropagation(); searchHistory = searchHistory.filter(item => item !== h); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
     function showHistory() { if(searchHistory.length) document.getElementById('search-history').style.display = 'block'; renderHistory(); }
     function hideHistory() { document.getElementById('search-history').style.display = 'none'; }
 
@@ -220,20 +170,13 @@
         if (idxInFiltered < 0 || idxInFiltered >= filteredData.length) return;
         currentEventIdx = idxInFiltered;
         const item = filteredData[idxInFiltered];
-        
-        Array.from(document.getElementById('table-body').rows).forEach((r, i) => 
-            r.className = i === idxInFiltered ? 'active-row' : ''
-        );
+        Array.from(document.getElementById('table-body').rows).forEach((r, i) => r.className = i === idxInFiltered ? 'active-row' : '');
         updateMapAndInfo(item);
     }
 
     function navEvent(step) {
         const nextIdx = currentEventIdx + step;
-        if (nextIdx >= 0 && nextIdx < filteredData.length) {
-            selectEvent(nextIdx);
-            const r = document.getElementById('table-body').rows[nextIdx];
-            if(r) r.scrollIntoView({behavior:'smooth', block:'center'});
-        }
+        if (nextIdx >= 0 && nextIdx < filteredData.length) { selectEvent(nextIdx); const r = document.getElementById('table-body').rows[nextIdx]; if(r) r.scrollIntoView({behavior:'smooth', block:'center'}); }
     }
 
     async function updateMapAndInfo(item) {
@@ -266,55 +209,35 @@
                 sl.appendChild(line);
             }
         });
-
         const existingMarkers = Array.from(ml.querySelectorAll('.marker'));
         const newPointNames = db.map(d => d.n);
         existingMarkers.forEach(m => { if (!newPointNames.includes(m.dataset.name)) m.remove(); });
-
         db.forEach(data => {
             const isH = logic.points.some(p => p.n === data.n);
             let m = ml.querySelector(`.marker[data-name="${data.n}"]`);
             if (!m) {
-                m = document.createElement('div');
-                m.className = 'marker';
-                m.dataset.name = data.n;
+                m = document.createElement('div'); m.className = 'marker'; m.dataset.name = data.n;
                 m.innerHTML = `<div class="dot"></div><div class="label">${data.n}</div>`;
-                m.onclick = (e) => {
-                    e.stopPropagation();
-                    const input = document.getElementById('search-input');
-                    input.classList.add('open');
-                    input.value = data.n;
-                    handleSearch(data.n);
-                };
+                m.onclick = (e) => { e.stopPropagation(); const input = document.getElementById('search-input'); input.classList.add('open'); input.value = data.n; handleSearch(data.n); };
                 ml.appendChild(m);
             }
             m.className = `marker ${isH ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`;
-            m.style.left = data.x + '%'; m.style.top = data.y + '%';
-            m.dataset.size = data.size;
+            m.style.left = data.x + '%'; m.style.top = data.y + '%'; m.dataset.size = data.size;
         });
         applyMarkerStyles();
         if (logic.points.length) flyTo(logic.points);
         setTimeout(refreshCollision, 60); 
     }
 
-    // --- 碰撞優化 (Q2): 關閉隱藏標籤點擊 ---
     function refreshCollision() {
         const markers = Array.from(document.querySelectorAll('.marker'));
         markers.sort((a, b) => (a.classList.contains('highlight') ? -1 : 1));
         const occupied = [];
         markers.forEach(m => {
-            const label = m.querySelector('.label');
-            const rect = label.getBoundingClientRect();
+            const label = m.querySelector('.label'); const rect = label.getBoundingClientRect();
             const isOverlap = occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom));
-            
-            if (isOverlap && !m.classList.contains('highlight')) {
-                label.style.opacity = "0";
-                m.style.pointerEvents = "none";
-            } else { 
-                label.style.opacity = "1"; 
-                m.style.pointerEvents = "auto";
-                occupied.push(rect); 
-            }
+            if (isOverlap && !m.classList.contains('highlight')) { label.style.opacity = "0"; m.style.pointerEvents = "none"; } 
+            else { label.style.opacity = "1"; m.style.pointerEvents = "auto"; occupied.push(rect); }
         });
     }
 
@@ -322,46 +245,29 @@
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
         const rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
         let startX, startY, startW, startH;
-
         rMain.onmousedown = rMain.ontouchstart = (e) => {
-            e.preventDefault();
-            const pointerX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
-            const pointerY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            e.preventDefault(); const pointerX = e.clientX || (e.touches ? e.touches[0].clientX : 0); const pointerY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
             startX = pointerX; startY = pointerY; startW = side.offsetWidth; startH = side.offsetHeight;
             window.onmousemove = window.ontouchmove = (ev) => {
-                const x = ev.clientX || (ev.touches ? ev.touches[0].clientX : 0);
-                const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
-                if (window.innerWidth < window.innerHeight && window.matchMedia("(orientation: portrait)").matches) {
-                    side.style.flex = `0 0 ${Math.max(100, Math.min(startH + (startY - y), window.innerHeight * 0.8))}px`;
-                } else {
-                    side.style.flex = "none"; 
-                    side.style.width = `${Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7))}px`;
-                }
+                const x = ev.clientX || (ev.touches ? ev.touches[0].clientX : 0); const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
+                if (window.innerWidth < window.innerHeight && window.matchMedia("(orientation: portrait)").matches) { side.style.flex = `0 0 ${Math.max(100, Math.min(startH + (startY - y), window.innerHeight * 0.8))}px`; } 
+                else { side.style.flex = "none"; side.style.width = `${Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7))}px`; }
                 syncOverlay(); updateMinScale(); refreshCollision();
             };
             window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
         };
-
         rInner.onmousedown = rInner.ontouchstart = (e) => {
-            e.preventDefault();
-            startY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
-            startH = info.offsetHeight;
-            window.onmousemove = window.ontouchmove = (ev) => {
-                const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
-                info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.9))}px`;
-            };
+            e.preventDefault(); startY = e.clientY || (e.touches ? e.touches[0].clientY : 0); startH = info.offsetHeight;
+            window.onmousemove = window.ontouchmove = (ev) => { const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0); info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.9))}px`; };
             window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
         };
     }
 
     function renderTable(data) {
-        const tbody = document.getElementById('table-body');
-        tbody.innerHTML = '';
+        const tbody = document.getElementById('table-body'); tbody.innerHTML = '';
         data.forEach((item, i) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`;
-            tr.onclick = () => selectEvent(i);
-            tbody.appendChild(tr);
+            const tr = document.createElement('tr'); tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`;
+            tr.onclick = () => selectEvent(i); tbody.appendChild(tr);
         });
     }
 
@@ -384,35 +290,25 @@
         const rows = []; let row = [], cell = '', q = false;
         for (let i = 0; i < t.length; i++) {
             let c = t[i], n = t[i+1];
-            if (c === '"' && q && n === '"') { cell += '"'; i++; }
-            else if (c === '"') q = !q;
+            if (c === '"' && q && n === '"') { cell += '"'; i++; } else if (c === '"') q = !q;
             else if (c === ',' && !q) { row.push(cell.trim()); cell = ''; }
-            else if ((c === '\n' || c === '\r') && !q) {
-                if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
-                row = []; cell = ''; if (c === '\r' && n === '\n') i++;
-            } else cell += c;
+            else if ((c === '\n' || c === '\r') && !q) { if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); } row = []; cell = ''; if (c === '\r' && n === '\n') i++; } else cell += c;
         }
-        if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
-        return rows;
+        if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); } return rows;
     }
 
     async function loadProject(folder) {
         if (!folder) return;
-        currentFolder = folder; localStorage.setItem('lastBibleFolder', folder);
-        allCoords = [];
+        currentFolder = folder; localStorage.setItem('lastBibleFolder', folder); allCoords = [];
         const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
         eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => {
             const obj = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] };
-            // 預建立搜尋索引字串 (Q3 優化)
-            obj._searchStr = Object.values(obj).join(' ').toLowerCase();
-            return obj;
+            obj._searchStr = Object.values(obj).join(' ').toLowerCase(); return obj;
         });
-        filteredData = [...eventData];
-        renderTable(filteredData);
+        filteredData = [...eventData]; renderTable(filteredData);
         for (let x = 1; x <= 15; x++) {
             try {
-                const cRes = await fetch(`${folder}/coords-${x}.csv?t=${Date.now()}`);
-                if (!cRes.ok) break;
+                const cRes = await fetch(`${folder}/coords-${x}.csv?t=${Date.now()}`); if (!cRes.ok) break;
                 parseCSV(await cRes.text()).slice(1).forEach(r => { if(r[1] && r[5]) allCoords.push({ n: r[1].trim(), x: r[5], y: r[6], mapIdx: x, size: parseInt(r[7])||0 }); });
             } catch(e) { break; }
         }
@@ -421,10 +317,7 @@
 
     function findBestMatch(t, db) {
         let b = null, m = Infinity;
-        for (const i of db) {
-            if (i.n === t) return i;
-            if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } }
-        }
+        for (const i of db) { if (i.n === t) return i; if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } } }
         return b;
     }
 
@@ -433,33 +326,39 @@
         locStr.split('+').map(b => b.trim()).forEach(block => {
             if (block.includes('→')) {
                 const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p);
-                if (chain.length > 1) result.paths.push(chain);
-                chain.forEach(p => result.points.push(p));
-            } else {
-                const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db);
-                if (pt) result.points.push(pt);
-            }
+                if (chain.length > 1) result.paths.push(chain); chain.forEach(p => result.points.push(p));
+            } else { const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db); if (pt) result.points.push(pt); }
         });
         return result;
     }
 
     function applyMarkerStyles() {
-        const s = pz ? pz.getScale() : 1;
-        const anti = s > 1 ? 1 / s : 1;
+        const s = pz ? pz.getScale() : 1; const anti = s > 1 ? 1 / s : 1;
         document.querySelectorAll('.marker').forEach(m => {
-            const gain = parseInt(m.dataset.size) || 0;
-            m.querySelector('.label').style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px';
+            const gain = parseInt(m.dataset.size) || 0; m.querySelector('.label').style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px';
             m.style.transform = `translate(-50%, -50%) scale(${anti})`;
         });
     }
 
+    // --- 10.8.0b 核心更新：flyTo 除錯顯示 ---
     function flyTo(pts) {
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
         if (!img.offsetWidth) return;
         let tx = 0, ty = 0; pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
         const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight;
         const sc = pz.getScale();
-        pz.pan((c.clientWidth/2)/sc - px, (c.clientHeight/2)/sc - py, { animate: true });
+        
+        // 原始 10.7.0 算法
+        const finalX = (c.clientWidth/2)/sc - px;
+        const finalY = (c.clientHeight/2)/sc - py;
+        
+        pz.pan(finalX, finalY, { animate: true });
+
+        // 更新 10.8.0b 除錯文字
+        setTimeout(() => {
+            const pan = pz.getPan();
+            document.getElementById('debug-info').innerText = `Scale: ${sc.toFixed(2)} | PanX: ${pan.x.toFixed(2)} | PanY: ${pan.y.toFixed(2)}`;
+        }, 300);
     }
 
     function updateMinScale() {
@@ -480,8 +379,16 @@
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
-        pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
-        el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
+        // --- 10.8.0b 變動：暫時關閉 contain: 'outside' ---
+        pz = Panzoom(el, { maxScale: 8, contain: false });
+        
+        el.addEventListener('panzoomchange', () => { 
+            applyMarkerStyles(); 
+            refreshCollision();
+            // 在手動平移時也更新除錯文字
+            const pan = pz.getPan();
+            document.getElementById('debug-info').innerText = `Scale: ${pz.getScale().toFixed(2)} | PanX: ${pan.x.toFixed(2)} | PanY: ${pan.y.toFixed(2)}`;
+        });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
         
         const res = await fetch(`folder.csv?t=${Date.now()}`);
