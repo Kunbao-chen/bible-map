@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.8.0e</title>
+    <title>亞伯拉罕史地互動地圖 V10.8.0f</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -22,7 +22,7 @@
 
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
         
-        /* V10.8.0e 恢復原生基準點，刪除強制 transform-origin */
+        /* V10.8.0f 恢復原生基準點：移除 transform-origin: 0 0 */
         #panzoom-element { 
             display: inline-block; 
             position: relative; 
@@ -130,13 +130,13 @@
     let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
     let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
 
+    // --- Search & UI Logic (Unchanged from 10.8.0c) ---
     function toggleSearch() {
         const input = document.getElementById('search-input');
         const isOpening = !input.classList.contains('open');
         input.classList.toggle('open');
         if (isOpening) { input.focus(); } else { hideHistory(); }
     }
-
     function handleSearch(keyword) {
         const input = document.getElementById('search-input');
         const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase();
@@ -152,7 +152,6 @@
         if (term && keyword === undefined) saveHistory(term);
         if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; }
     }
-
     function clearSearch() {
         const lastId = currentEventIdx !== -1 ? filteredData[currentEventIdx].id : null;
         const input = document.getElementById('search-input');
@@ -161,14 +160,12 @@
         handleSearch("");
         if (lastId) { const newIdx = filteredData.findIndex(d => d.id === lastId); if (newIdx !== -1) { selectEvent(newIdx); const r = document.getElementById('table-body').rows[newIdx]; if(r) r.scrollIntoView({block:'center'}); } }
     }
-
     function saveHistory(term) { if (!term.trim()) return; searchHistory = [term, ...searchHistory.filter(h => h !== term)].slice(0, 10); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
     function renderHistory() { const panel = document.getElementById('search-history'); panel.innerHTML = searchHistory.map(h => `<div class="history-item" onclick="useHistory('${h}')"><span>${h}</span><span style="color:#ccc" onclick="deleteHistory(event, '${h}')">×</span></div>`).join(''); }
     function useHistory(h) { document.getElementById('search-input').value = h; handleSearch(h); hideHistory(); }
     function deleteHistory(e, h) { e.stopPropagation(); searchHistory = searchHistory.filter(item => item !== h); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
     function showHistory() { if(searchHistory.length) document.getElementById('search-history').style.display = 'block'; renderHistory(); }
     function hideHistory() { document.getElementById('search-history').style.display = 'none'; }
-
     function selectEvent(idxInFiltered) {
         if (idxInFiltered < 0 || idxInFiltered >= filteredData.length) return;
         currentEventIdx = idxInFiltered;
@@ -176,7 +173,6 @@
         Array.from(document.getElementById('table-body').rows).forEach((r, i) => r.className = i === idxInFiltered ? 'active-row' : '');
         updateMapAndInfo(item);
     }
-
     function navEvent(step) {
         const nextIdx = currentEventIdx + step;
         if (nextIdx >= 0 && nextIdx < filteredData.length) { selectEvent(nextIdx); const r = document.getElementById('table-body').rows[nextIdx]; if(r) r.scrollIntoView({behavior:'smooth', block:'center'}); }
@@ -343,47 +339,31 @@
         });
     }
 
-/* V10.8.0e：基於 50% 50% 基準點的絕對仿射對位 */
-function flyTo(pts) {
-    const el = document.getElementById('panzoom-element');
-    const img = document.getElementById('bg-map');
-    const c = document.getElementById('map-section');
-    if (!img.offsetWidth) return;
-    
-    // 1. 計算目標點在原始圖片上的像素座標 (0~1 比例)
-    let tx = 0, ty = 0;
-    pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
-    const px = (tx / pts.length / 100) * img.offsetWidth;
-    const py = (ty / pts.length / 100) * img.offsetHeight;
+    // --- V10.8.0f 修正區塊：仿射變換 FlyTo ---
+    function flyTo(pts) {
+        const el = document.getElementById('panzoom-element');
+        const img = document.getElementById('bg-map');
+        const c = document.getElementById('map-section');
+        if (!img.offsetWidth || !pts.length) return;
+        
+        let tx = 0, ty = 0;
+        pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
+        const px = (tx / pts.length / 100) * img.offsetWidth;
+        const py = (ty / pts.length / 100) * img.offsetHeight;
 
-    const sc = pz.getScale();
+        const sc = pz.getScale();
+        const ox = el.offsetWidth / 2;
+        const oy = el.offsetHeight / 2;
+        const cx = c.clientWidth / 2;
+        const cy = c.clientHeight / 2;
 
-    // 2. 取得元素的原始中心點 (Panzoom 預設的 transform-origin 是 50% 50%)
-    const originX = el.offsetWidth / 2;
-    const originY = el.offsetHeight / 2;
+        const finalX = cx - ox - (px - ox) * sc;
+        const finalY = cy - oy - (py - oy) * sc;
 
-    // 3. 仿射變換：計算目標點在放大 sc 倍後，相對於元素內部的實際位置
-    const scaledPx = originX + (px - originX) * sc;
-    const scaledPy = originY + (py - originY) * sc;
-
-    // 4. 計算容器中心 (我們希望目標點對齊的地方)
-    const targetX = c.clientWidth / 2;
-    const targetY = c.clientHeight / 2;
-
-    // 5. 兩者的差值即為所需的絕對平移量
-    const finalX = targetX - scaledPx;
-    const finalY = targetY - scaledPy;
-
-    pz.pan(finalX, finalY, { animate: true });
-
-    setTimeout(() => {
-        const panAfter = pz.getPan();
-        const debugEl = document.getElementById('debug-info');
-        if (debugEl) {
-            debugEl.innerText = `Scale: ${sc.toFixed(2)} | 目標: (${px.toFixed(0)}, ${py.toFixed(0)}) | Pan: (${panAfter.x.toFixed(0)}, ${panAfter.y.toFixed(0)})`;
+        if (!isNaN(finalX) && !isNaN(finalY)) {
+            pz.pan(finalX, finalY, { animate: true });
         }
-    }, 350);
-}
+    }
 
     function updateMinScale() {
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
@@ -401,38 +381,32 @@ function flyTo(pts) {
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
 
-    /* V10.8.0e 新增：強制以 viewport 絕對座標為焦點的縮放函數 */
+    // --- V10.8.0f 修正區塊：穩定的縮放函數 ---
     function zoomFromCenter(isZoomIn) {
-        const c = document.getElementById('map-section');
-        const rect = c.getBoundingClientRect(); // 取得容器在視窗中的絕對位置
-        
-        // 將中心點轉換為相對於瀏覽器視窗 (viewport) 的事件座標
-        const focalX = rect.left + (rect.width / 2);
-        const focalY = rect.top + (rect.height / 2);
-        
-        const opts = { animate: true, focal: { clientX: focalX, clientY: focalY } };
-        if (isZoomIn) {
-            pz.zoomIn(opts);
-        } else {
-            pz.zoomOut(opts);
-        }
+        if (!pz) return;
+        const opts = { animate: true };
+        if (isZoomIn) pz.zoomIn(opts);
+        else pz.zoomOut(opts);
     }
 
-    /* V10.8.0e 最終行為修正：回歸原生縮放邏輯 */
+    // --- V10.8.0f 初始化與 NaN 防禦 ---
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
         
-        // 移除強制 origin，讓縮放可以順暢跟隨滑鼠焦點
         pz = Panzoom(el, { 
             maxScale: 8, 
             contain: false
         });
         
-        el.addEventListener('panzoomchange', () => { 
+        el.addEventListener('panzoomchange', (e) => { 
+            const { x, y, scale } = e.detail;
+            if (isNaN(x) || isNaN(y)) {
+                pz.pan(0, 0, { silent: true });
+                return;
+            }
             applyMarkerStyles(); 
             refreshCollision();
-            const pan = pz.getPan();
-            document.getElementById('debug-info').innerText = `Scale: ${pz.getScale().toFixed(2)} | PanX: ${pan.x.toFixed(2)} | PanY: ${pan.y.toFixed(2)}`;
+            document.getElementById('debug-info').innerText = `Scale: ${scale.toFixed(2)} | PanX: ${x.toFixed(1)} | PanY: ${y.toFixed(1)}`;
         });
         
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
