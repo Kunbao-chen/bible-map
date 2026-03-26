@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.8.0c</title>
+    <title>亞伯拉罕史地互動地圖 V10.8.0b</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -21,7 +21,11 @@
         }
 
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
-        #panzoom-element { display: inline-block; position: relative; }
+        #panzoom-element { 
+            display: inline-block; 
+            position: relative; 
+            transform-origin: 0 0 !important; 
+        }
         #bg-map { display: block; max-width: none; user-select: none; }
         
         /* 標籤樣式 */
@@ -38,7 +42,7 @@
         .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
         @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
 
-        /* 搜尋介面修正 */
+        /* 搜尋介面 */
         .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
         .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); padding: 2px; }
         .search-clear { cursor: pointer; display: none; padding: 0 8px; color: var(--brown); font-weight: bold; font-size: 18px; order: -1; }
@@ -67,7 +71,6 @@
         .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
         .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         
-        /* 10.8.0b 除錯文字樣式 */
         #debug-info { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: #0f0; padding: 5px 10px; font-family: monospace; font-size: 12px; z-index: 3000; pointer-events: none; border-radius: 4px; }
     </style>
 </head>
@@ -340,44 +343,32 @@
         });
     }
 
-/* 10.8.0b：嚴格遵守手術刀協議（基於 10.7.0 原始版） */
-
+/* 10.8.0b：手術刀協議修正 - 線性化 FlyTo */
 function flyTo(pts) {
     const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
     if (!img.offsetWidth) return;
     
-    // --- 10.7.0 原始像素計算 ---
+    // 計算目標點像素
     let tx = 0, ty = 0;
-    pts.forEach(p => {
-        tx += parseFloat(p.x);
-        ty += parseFloat(p.y);
-    });
-    const avgX = tx / pts.length;
-    const avgY = ty / pts.length;
-    const px = (avgX / 100) * img.offsetWidth;
-    const py = (avgY / 100) * img.offsetHeight;
-
+    pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
+    const px = (tx / pts.length / 100) * img.offsetWidth;
+    const py = (ty / pts.length / 100) * img.offsetHeight;
     const sc = pz.getScale();
 
-    // --- 【取得】Flyto 前的地點容器 X 座標 ---
-    const panBefore = pz.getPan();
-    const containerXBefore = (px * sc) + panBefore.x;
-    const viewCenterX = c.clientWidth / 2;
-
-    // --- 10.7.0 原始算法（完全不動，保持純粹） ---
+    // 根源修正公式：在 origin 0,0 基準下回歸線性對位
     const finalX = (c.clientWidth / 2) / sc - px;
     const finalY = (c.clientHeight / 2) / sc - py;
     
     pz.pan(finalX, finalY, { animate: true });
 
-    // --- 除錯資訊更新 ---
+    // 除錯資訊更新 (維持原格式)
     setTimeout(() => {
         const panAfter = pz.getPan();
         const containerXAfter = (px * sc) + panAfter.x;
+        const viewCenterX = c.clientWidth / 2;
         const debugEl = document.getElementById('debug-info');
         if (debugEl) {
-            // (倍率 | 圖片總長 | 地點圖x | 容器中心x | flyto前容器x | flyto後容器x)
-            debugEl.innerText = `(${sc.toFixed(2)} | W:${img.offsetWidth} | 圖x:${px.toFixed(0)} | 中:${viewCenterX.toFixed(0)} | 前:${containerXBefore.toFixed(0)} | 後:${containerXAfter.toFixed(0)})`;
+            debugEl.innerText = `(${sc.toFixed(2)} | W:${img.offsetWidth} | 圖x:${px.toFixed(0)} | 中:${viewCenterX.toFixed(0)} | 前:-- | 後:${containerXAfter.toFixed(0)})`;
         }
     }, 350);
 }
@@ -406,7 +397,6 @@ function flyTo(pts) {
         el.addEventListener('panzoomchange', () => { 
             applyMarkerStyles(); 
             refreshCollision();
-            // 在手動平移時也更新除錯文字
             const pan = pz.getPan();
             document.getElementById('debug-info').innerText = `Scale: ${pz.getScale().toFixed(2)} | PanX: ${pan.x.toFixed(2)} | PanY: ${pan.y.toFixed(2)}`;
         });
