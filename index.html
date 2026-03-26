@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.8.0b</title>
+    <title>亞伯拉罕史地互動地圖 V10.8.0c</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -340,46 +340,44 @@
         });
     }
 
-/* 手術刀協議：10.8.0b X-Axis 專向除錯版 */
+/* 10.8.0b：嚴格遵守手術刀協議（基於 10.7.0 原始版） */
+
 function flyTo(pts) {
     const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
-    if (!img || !img.offsetWidth) return;
-
-    // 1. 取得圖片 X 總長 (動態取得)
-    const currentImgW = img.offsetWidth;
-
-    // 2. 計算地點在圖上的 X 座標 (PX)
-    let tx = 0; 
-    pts.forEach(p => { tx += parseFloat(p.x); });
+    if (!img.offsetWidth) return;
+    
+    // --- 10.7.0 原始像素計算 ---
+    let tx = 0, ty = 0;
+    pts.forEach(p => {
+        tx += parseFloat(p.x);
+        ty += parseFloat(p.y);
+    });
     const avgX = tx / pts.length;
-    const px = (avgX / 100) * currentImgW;
-
-    // 3. 取得現在容器中心 X
-    const viewCenterX = c.clientWidth / 2;
+    const avgY = ty / pts.length;
+    const px = (avgX / 100) * img.offsetWidth;
+    const py = (avgY / 100) * img.offsetHeight;
 
     const sc = pz.getScale();
 
-    // ─── Flyto 前：實測地點在容器中的物理 X 座標 ───
-    // 我們隨便抓一個正在顯示的標籤來代表目標位置（或是建立一個虛擬點）
-    // 這裡我們用物理公式模擬「量出來」的結果，確保與瀏覽器渲染一致
+    // --- 【取得】Flyto 前的地點容器 X 座標 ---
     const panBefore = pz.getPan();
     const containerXBefore = (px * sc) + panBefore.x;
+    const viewCenterX = c.clientWidth / 2;
 
-    // 4. 執行 10.7.0 原始算法
-    const finalX = viewCenterX / sc - px;
-    const finalY = (c.clientHeight / 2) / sc - (pts[0].y / 100 * img.offsetHeight); // Y 軸照舊但不顯示
+    // --- 10.7.0 原始算法（完全不動，保持純粹） ---
+    const finalX = (c.clientWidth / 2) / sc - px;
+    const finalY = (c.clientHeight / 2) / sc - py;
     
     pz.pan(finalX, finalY, { animate: true });
 
-    // 5. Flyto 後：實測最終位置
+    // --- 除錯資訊更新 ---
     setTimeout(() => {
         const panAfter = pz.getPan();
         const containerXAfter = (px * sc) + panAfter.x;
-        
         const debugEl = document.getElementById('debug-info');
         if (debugEl) {
-            // 格式：(倍率 | 圖片總長 | 地點圖x | 容器中心x | flyto前容器x | flyto後容器x)
-            debugEl.innerText = `(${sc.toFixed(2)} | W:${currentImgW} | 圖x:${px.toFixed(0)} | 中:${viewCenterX.toFixed(0)} | 前:${containerXBefore.toFixed(0)} | 後:${containerXAfter.toFixed(0)})`;
+            // (倍率 | 圖片總長 | 地點圖x | 容器中心x | flyto前容器x | flyto後容器x)
+            debugEl.innerText = `(${sc.toFixed(2)} | W:${img.offsetWidth} | 圖x:${px.toFixed(0)} | 中:${viewCenterX.toFixed(0)} | 前:${containerXBefore.toFixed(0)} | 後:${containerXAfter.toFixed(0)})`;
         }
     }, 350);
 }
