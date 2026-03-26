@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.8.0j</title>
+    <title>亞伯拉罕史地互動地圖 V10.8.0c</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -22,7 +22,7 @@
 
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
         
-        /* 保持 V10.8.0b 的左上角座標系 */
+        /* V10.8.0c 根源修正：統一使用左上角座標系，確保線性 FlyTo */
         #panzoom-element { 
             display: inline-block; 
             position: relative; 
@@ -91,8 +91,8 @@
         <div class="fab-container">
             <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
             <div id="fab-menu" class="fab-menu" style="display:none; flex-direction:column; gap:6px;">
-                <button class="fab-item" onclick="manualZoom(1.2)" style="width:34px; height:34px; border-radius:10px;">+</button>
-                <button class="fab-item" onclick="manualZoom(0.8)" style="width:34px; height:34px; border-radius:10px;">-</button>
+                <button class="fab-item" onclick="pz.zoomIn()" style="width:34px; height:34px; border-radius:10px;">+</button>
+                <button class="fab-item" onclick="pz.zoomOut()" style="width:34px; height:34px; border-radius:10px;">-</button>
                 <button class="fab-item" onclick="resetView()" style="width:34px; height:34px; border-radius:10px;">↺</button>
             </div>
         </div>
@@ -344,7 +344,7 @@
         });
     }
 
-/* V10.8.0j：手術刀修正 - 精確對位核心 */
+/* V10.8.0c：核心邏輯修正 - 在 0,0 座標系下實現精確線性對位 */
 function flyTo(pts) {
     const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
     if (!img.offsetWidth) return;
@@ -355,52 +355,21 @@ function flyTo(pts) {
     const py = (ty / pts.length / 100) * img.offsetHeight;
     const sc = pz.getScale();
 
-    // 嚴格遵守線性補償公式
-    const finalX = (c.clientWidth / 2) - (px * sc);
-    const finalY = (c.clientHeight / 2) - (py * sc);
+    // 線性公式：將目標點對齊容器中心 (0,0 原點條件下)
+    const finalX = (c.clientWidth / 2) / sc - px;
+    const finalY = (c.clientHeight / 2) / sc - py;
     
     pz.pan(finalX, finalY, { animate: true });
-}
 
-/* V10.8.0j 手術刀修正：手動精確縮放 (繞過 origin 偏移問題) */
-function handleWheel(e) {
-    e.preventDefault();
-    const section = document.getElementById('map-section');
-    const rect = section.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const oldScale = pz.getScale();
-    const pan = pz.getPan();
-    
-    const imgX = (mouseX - pan.x) / oldScale;
-    const imgY = (mouseY - pan.y) / oldScale;
-
-    const delta = -e.deltaY;
-    const factor = delta > 0 ? 1.2 : 0.8;
-    const newScale = Math.min(8, Math.max(pz.getOptions().minScale, oldScale * factor));
-    
-    const newPanX = mouseX - (imgX * newScale);
-    const newPanY = mouseY - (imgY * newScale);
-
-    pz.zoom(newScale, { silent: true });
-    pz.pan(newPanX, newPanY, { silent: true });
-}
-
-/* 按鈕專用縮放 */
-function manualZoom(factor) {
-    const c = document.getElementById('map-section');
-    const centerX = c.clientWidth / 2;
-    const centerY = c.clientHeight / 2;
-    const oldScale = pz.getScale();
-    const pan = pz.getPan();
-    const imgX = (centerX - pan.x) / oldScale;
-    const imgY = (centerY - pan.y) / oldScale;
-    const newScale = Math.min(8, Math.max(pz.getOptions().minScale, oldScale * factor));
-    const newPanX = centerX - (imgX * newScale);
-    const newPanY = centerY - (imgY * newScale);
-    pz.zoom(newScale, { animate: true });
-    pz.pan(newPanX, newPanY, { animate: true });
+    setTimeout(() => {
+        const panAfter = pz.getPan();
+        const containerXAfter = (px * sc) + panAfter.x;
+        const viewCenterX = c.clientWidth / 2;
+        const debugEl = document.getElementById('debug-info');
+        if (debugEl) {
+            debugEl.innerText = `(${sc.toFixed(2)} | W:${img.offsetWidth} | 圖x:${px.toFixed(0)} | 中:${viewCenterX.toFixed(0)} | 前:-- | 後:${containerXAfter.toFixed(0)})`;
+        }
+    }, 350);
 }
 
     function updateMinScale() {
@@ -419,26 +388,24 @@ function manualZoom(factor) {
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
 
+    /* V10.8.0c 最終行為修正：鎖定線性座標系，恢復視覺中心縮放感 */
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
-        const section = document.getElementById('map-section');
         
-        // 嚴格保留：contain: false
+        // --- V10.8.0c 變動：加入 origin: '0 0' 參數，補償 CSS 基準點歸零帶來的縮放偏移 ---
         pz = Panzoom(el, { 
             maxScale: 8, 
-            contain: false
+            contain: false,
+            origin: '0 0' 
         });
         
         el.addEventListener('panzoomchange', () => { 
             applyMarkerStyles(); 
             refreshCollision();
             const pan = pz.getPan();
-            // 嚴格保留：原始除錯資訊格式
             document.getElementById('debug-info').innerText = `Scale: ${pz.getScale().toFixed(2)} | PanX: ${pan.x.toFixed(2)} | PanY: ${pan.y.toFixed(2)}`;
         });
-
-        // 植入手動滾輪接管
-        section.addEventListener('wheel', handleWheel, { passive: false });
+        document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
         
         const res = await fetch(`folder.csv?t=${Date.now()}`);
         const folders = parseCSV(await res.text()).slice(1);
