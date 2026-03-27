@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.8.0g</title>
+    <title>亞伯拉罕史地互動地圖 V10.8.0i</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -22,13 +22,19 @@
 
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
         
-        /* V10.8.0f 恢復原生基準點：移除 transform-origin: 0 0 */
+        /* V10.8.0i：確保容器與圖片物理尺寸完全一致，消除行內間隙 */
         #panzoom-element { 
             display: inline-block; 
             position: relative; 
+            transform-origin: 0 0 !important; 
         }
         
-        #bg-map { display: block; max-width: none; user-select: none; }
+        #bg-map { 
+            display: block; 
+            max-width: none; 
+            user-select: none; 
+            vertical-align: middle;
+        }
         
         .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
         .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; margin-bottom: 2px; }
@@ -90,8 +96,8 @@
         <div class="fab-container">
             <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
             <div id="fab-menu" class="fab-menu" style="display:none; flex-direction:column; gap:6px;">
-                <button class="fab-item" onclick="zoomFromCenter(true)" style="width:34px; height:34px; border-radius:10px;">+</button>
-                <button class="fab-item" onclick="zoomFromCenter(false)" style="width:34px; height:34px; border-radius:10px;">-</button>
+                <button class="fab-item" onclick="pz.zoomIn()" style="width:34px; height:34px; border-radius:10px;">+</button>
+                <button class="fab-item" onclick="pz.zoomOut()" style="width:34px; height:34px; border-radius:10px;">-</button>
                 <button class="fab-item" onclick="resetView()" style="width:34px; height:34px; border-radius:10px;">↺</button>
             </div>
         </div>
@@ -130,13 +136,13 @@
     let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
     let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
 
-    // --- Search & UI Logic (Unchanged from 10.8.0c) ---
     function toggleSearch() {
         const input = document.getElementById('search-input');
         const isOpening = !input.classList.contains('open');
         input.classList.toggle('open');
         if (isOpening) { input.focus(); } else { hideHistory(); }
     }
+
     function handleSearch(keyword) {
         const input = document.getElementById('search-input');
         const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase();
@@ -152,6 +158,7 @@
         if (term && keyword === undefined) saveHistory(term);
         if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; }
     }
+
     function clearSearch() {
         const lastId = currentEventIdx !== -1 ? filteredData[currentEventIdx].id : null;
         const input = document.getElementById('search-input');
@@ -160,12 +167,14 @@
         handleSearch("");
         if (lastId) { const newIdx = filteredData.findIndex(d => d.id === lastId); if (newIdx !== -1) { selectEvent(newIdx); const r = document.getElementById('table-body').rows[newIdx]; if(r) r.scrollIntoView({block:'center'}); } }
     }
+
     function saveHistory(term) { if (!term.trim()) return; searchHistory = [term, ...searchHistory.filter(h => h !== term)].slice(0, 10); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
     function renderHistory() { const panel = document.getElementById('search-history'); panel.innerHTML = searchHistory.map(h => `<div class="history-item" onclick="useHistory('${h}')"><span>${h}</span><span style="color:#ccc" onclick="deleteHistory(event, '${h}')">×</span></div>`).join(''); }
     function useHistory(h) { document.getElementById('search-input').value = h; handleSearch(h); hideHistory(); }
     function deleteHistory(e, h) { e.stopPropagation(); searchHistory = searchHistory.filter(item => item !== h); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
     function showHistory() { if(searchHistory.length) document.getElementById('search-history').style.display = 'block'; renderHistory(); }
     function hideHistory() { document.getElementById('search-history').style.display = 'none'; }
+
     function selectEvent(idxInFiltered) {
         if (idxInFiltered < 0 || idxInFiltered >= filteredData.length) return;
         currentEventIdx = idxInFiltered;
@@ -173,6 +182,7 @@
         Array.from(document.getElementById('table-body').rows).forEach((r, i) => r.className = i === idxInFiltered ? 'active-row' : '');
         updateMapAndInfo(item);
     }
+
     function navEvent(step) {
         const nextIdx = currentEventIdx + step;
         if (nextIdx >= 0 && nextIdx < filteredData.length) { selectEvent(nextIdx); const r = document.getElementById('table-body').rows[nextIdx]; if(r) r.scrollIntoView({behavior:'smooth', block:'center'}); }
@@ -339,35 +349,37 @@
         });
     }
 
-    /* V10.8.0g：核心邏輯修正 - 採用標準線性投影矩陣公式 */
+/* V10.8.0i：核心邏輯修正 - 物理座標歸一化對位 */
 function flyTo(pts) {
-    const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
-    if (!img.offsetWidth || !img.naturalWidth) return; // 確保圖片已加載
-    
-    // 1. 計算目標點在地圖原始尺寸下的像素座標 (px, py)
+    const el = document.getElementById('panzoom-element');
+    const c = document.getElementById('map-section');
+    if (!el.offsetWidth) return;
+
+    // 1. 取得目標點在「原始比例」下的位置 (0~1)
     let tx = 0, ty = 0;
     pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
-    const px = (tx / pts.length / 100) * img.offsetWidth;
-    const py = (ty / pts.length / 100) * img.offsetHeight;
-    
+    const ratioX = (tx / pts.length) / 100;
+    const ratioY = (ty / pts.length) / 100;
+
     // 2. 取得當前縮放倍率
     const sc = pz.getScale();
 
-    // 3. 正規線性投影公式 (Linear Projection): 
-    // 目標 Pan = 容器中心 - (地圖座標 * 縮放倍率)
-    const finalX = (c.clientWidth / 2) - (px * sc);
-    const finalY = (c.clientHeight / 2) - (py * sc);
+    // 3. 核心修正：使用 Panzoom 容器的寬高計算投影位置
+    const targetX = (el.offsetWidth * ratioX) * sc;
+    const targetY = (el.offsetHeight * ratioY) * sc;
+
+    // 4. 標準線性投影公式：Pan = 容器中心 - (縮放後的點)
+    const finalX = (c.clientWidth / 2) - targetX;
+    const finalY = (c.clientHeight / 2) - targetY;
     
-    // 執行平移
     pz.pan(finalX, finalY, { animate: true });
 
-    // Debug 輸出：驗證縮放後的點是否真的落在容器中心
+    // Debug 資訊更新
     setTimeout(() => {
-        const panAfter = pz.getPan();
-        const visualX = (px * sc) + panAfter.x; // 縮放後的點 + 位移 = 最終螢幕位置
+        const pan = pz.getPan();
         const debugEl = document.getElementById('debug-info');
         if (debugEl) {
-            debugEl.innerText = `Scale:${sc.toFixed(2)} | 目標中心:${(c.clientWidth/2).toFixed(0)} | 實際落點:${visualX.toFixed(0)}`;
+            debugEl.innerText = `V10.8.0i | Scale:${sc.toFixed(2)} | X:${pan.x.toFixed(0)} | Y:${pan.y.toFixed(0)}`;
         }
     }, 350);
 }
@@ -388,34 +400,21 @@ function flyTo(pts) {
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
 
-    // --- V10.8.0f 修正區塊：穩定的縮放函數 ---
-    function zoomFromCenter(isZoomIn) {
-        if (!pz) return;
-        const opts = { animate: true };
-        if (isZoomIn) pz.zoomIn(opts);
-        else pz.zoomOut(opts);
-    }
-
-    // --- V10.8.0f 初始化與 NaN 防禦 ---
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
         
         pz = Panzoom(el, { 
             maxScale: 8, 
-            contain: false
+            contain: false,
+            origin: '0 0' 
         });
         
-        el.addEventListener('panzoomchange', (e) => { 
-            const { x, y, scale } = e.detail;
-            if (isNaN(x) || isNaN(y)) {
-                pz.pan(0, 0, { silent: true });
-                return;
-            }
+        el.addEventListener('panzoomchange', () => { 
             applyMarkerStyles(); 
             refreshCollision();
-            document.getElementById('debug-info').innerText = `Scale: ${scale.toFixed(2)} | PanX: ${x.toFixed(1)} | PanY: ${y.toFixed(1)}`;
+            const pan = pz.getPan();
+            document.getElementById('debug-info').innerText = `Scale: ${pz.getScale().toFixed(2)} | PanX: ${pan.x.toFixed(2)} | PanY: ${pan.y.toFixed(2)}`;
         });
-        
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
         
         const res = await fetch(`folder.csv?t=${Date.now()}`);
