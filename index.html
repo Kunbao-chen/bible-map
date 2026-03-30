@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V11.0.2b</title>
+    <title>亞伯拉罕史地互動地圖 V11.0.3</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -92,14 +92,12 @@
                 <div style="cursor:pointer; padding: 4px;" onclick="toggleSearch()">🔍</div>
             </div>
         </div>
-
         <div class="fab-container">
             <div id="fab-menu">
                 <div class="fab-btn" title="重置視角" onclick="resetView()">🏠</div>
             </div>
             <div class="fab-btn" onclick="toggleFab()">⚙️</div>
         </div>
-
         <div id="panzoom-element">
             <img src="" id="bg-map">
             <div id="overlay-container">
@@ -108,14 +106,11 @@
             </div>
         </div>
     </div>
-    
     <div id="resizer-main" onmousedown="initResizerMain(event)"></div>
-    
     <div id="side-panel">
         <div id="folder-nav">
             <select id="folder-select" onchange="loadProject(this.value)"></select>
         </div>
-        
         <div id="info-area">
             <div id="info-header" onclick="toggleInfo()">
                 <div>📜 詳情 <span id="info-arrow">▼</span></div>
@@ -132,9 +127,7 @@
                 <div id="info-note" style="font-size:14px; line-height:1.6; color:#555; white-space: pre-wrap;"></div>
             </div>
         </div>
-        
         <div id="resizer-inner" onmousedown="initResizerInner(event)"></div>
-        
         <div id="list-container">
             <table>
                 <tbody id="table-body"></tbody>
@@ -146,7 +139,6 @@
 <script>
     let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1;
 
-    // --- 精確 CSV 解析器 ---
     function splitCSVLine(line) {
         const result = [];
         let cur = '', inQuote = false;
@@ -165,14 +157,11 @@
         if (!folder) return;
         currentFolder = folder;
         localStorage.setItem('lastBibleFolder', folder);
-        
         try {
             const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
             const dText = await dRes.text();
             const rows = dText.split('\n').filter(l => l.trim()).map(line => splitCSVLine(line));
-            const dataRows = rows.slice(1);
-            
-            eventData = dataRows.map(r => {
+            eventData = rows.slice(1).map(r => {
                 const obj = { id: r[0], time: r[1], event: r[2], loc: r[3], script: r[4], note: r[5] };
                 obj._searchStr = Object.values(obj).join('|').toLowerCase();
                 return obj;
@@ -183,25 +172,16 @@
                 try {
                     const cRes = await fetch(`${folder}/coords-${i}.csv?t=${Date.now()}`);
                     if (!cRes.ok) break;
-                    const cText = await cRes.text();
-                    const cRows = cText.split('\n').filter(l => l.trim()).map(line => splitCSVLine(line));
+                    const cRows = (await cRes.text()).split('\n').filter(l => l.trim()).map(line => splitCSVLine(line));
                     const header = cRows[0];
                     const sIdx = header.indexOf("Size"), nIdx = header.indexOf("地名"), xIdx = header.indexOf("百分比X"), yIdx = header.indexOf("百分比Y");
-                    
                     cRows.slice(1).forEach(r => {
                         if(r[nIdx] && r[xIdx] && r[yIdx]) {
-                            allCoords.push({ 
-                                n: r[nIdx].replace(/^"|"$/g, '').trim(), 
-                                x: r[xIdx], 
-                                y: r[yIdx], 
-                                mapIdx: i, 
-                                size: parseInt(r[sIdx]) || 0 
-                            });
+                            allCoords.push({ n: r[nIdx].replace(/^"|"$/g, '').trim(), x: r[xIdx], y: r[yIdx], mapIdx: i, size: parseInt(r[sIdx]) || 0 });
                         }
                     });
                 } catch(e) { break; }
             }
-            
             handleSearch();
             if(filteredData.length > 0) selectEvent(0);
         } catch(e) { console.error("加載失敗", e); }
@@ -225,14 +205,12 @@
                 targetMapIdx = i; break;
             }
         }
-
         if (currentMapIdx !== targetMapIdx) {
             currentMapIdx = targetMapIdx;
             const img = document.getElementById('bg-map');
             img.src = `${currentFolder}/picture-${targetMapIdx}.png`;
             await new Promise(res => img.onload = () => { syncOverlay(); updateMinScale(); res(); });
         }
-        
         const currentMapData = allCoords.filter(c => c.mapIdx === targetMapIdx);
         const logic = parseLocationLogic(item.loc, currentMapData);
         renderVisuals(currentMapData, logic);
@@ -242,21 +220,17 @@
     function renderVisuals(db, logic) {
         const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer');
         sl.innerHTML = '';
-        
         logic.paths.forEach(path => {
             for (let i = 0; i < path.length - 1; i++) {
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                 line.setAttribute('x1', path[i].x + '%'); line.setAttribute('y1', path[i].y + '%');
                 line.setAttribute('x2', path[i+1].x + '%'); line.setAttribute('y2', path[i+1].y + '%');
-                line.setAttribute('stroke', '#d32f2f'); line.setAttribute('stroke-width', '2.5');
-                line.setAttribute('stroke-dasharray', '5,5');
+                line.setAttribute('stroke', '#d32f2f'); line.setAttribute('stroke-width', '2.5'); line.setAttribute('stroke-dasharray', '5,5');
                 sl.appendChild(line);
             }
         });
-
         const currentNames = db.map(d => d.n);
         Array.from(ml.querySelectorAll('.marker')).forEach(m => { if(!currentNames.includes(m.dataset.name)) m.remove(); });
-
         db.forEach(data => {
             const isHighlight = logic.points.some(p => p.n === data.n);
             let m = ml.querySelector(`.marker[data-name="${data.n}"]`);
@@ -270,7 +244,6 @@
             m.style.left = data.x + '%'; m.style.top = data.y + '%';
             m.dataset.size = data.size; 
         });
-
         applyMarkerStyles();
         if (logic.points.length > 0) flyTo(logic.points);
         setTimeout(refreshCollision, 100);
@@ -278,8 +251,7 @@
 
     function flyTo(pts) {
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
-        let tx = 0, ty = 0;
-        pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
+        let tx = 0, ty = 0; pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
         const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight, sc = pz.getScale();
         pz.pan((c.clientWidth/2) - (px * sc), (c.clientHeight/2) - (py * sc), { animate: true });
     }
@@ -321,8 +293,7 @@
     }
 
     function renderTable(data) {
-        const tbody = document.getElementById('table-body');
-        tbody.innerHTML = data.map((item, i) => `
+        document.getElementById('table-body').innerHTML = data.map((item, i) => `
             <tr onclick="selectEvent(${i})">
                 <td width="50" style="text-align:center; color:#999;">${item.id}</td>
                 <td>${item.event}</td>
@@ -345,42 +316,36 @@
     function navEvent(dir) { selectEvent(currentEventIdx + dir); }
 
     function initResizerMain(e) {
-        const side = document.getElementById('side-panel');
-        const startX = e.clientX, startW = side.offsetWidth;
+        const side = document.getElementById('side-panel'), startX = e.clientX, startW = side.offsetWidth;
         document.onmousemove = (ev) => { side.style.width = (startW + (startX - ev.clientX)) + 'px'; syncOverlay(); updateMinScale(); refreshCollision(); };
         document.onmouseup = () => document.onmousemove = null;
     }
 
     function initResizerInner(e) {
-        const info = document.getElementById('info-area');
-        const startY = e.clientY, startH = info.offsetHeight;
+        const info = document.getElementById('info-area'), startY = e.clientY, startH = info.offsetHeight;
         document.onmousemove = (ev) => { info.style.height = (startH + (ev.clientY - startY)) + 'px'; };
         document.onmouseup = () => document.onmousemove = null;
     }
 
     function applyMarkerStyles() {
-        if (!pz) return;
-        const s = pz.getScale();
-        document.querySelectorAll('.marker').forEach(m => {
-            m.style.transform = `translate(-50%, -50%) scale(${s > 1 ? 1/s : 1})`;
-        });
+        if (!pz) return; const s = pz.getScale();
+        document.querySelectorAll('.marker').forEach(m => { m.style.transform = `translate(-50%, -50%) scale(${s > 1 ? 1/s : 1})`; });
     }
 
-    // --- 關鍵修正：依照 sorter.html 正確權重排序 ---
+    // --- 核心修正：強制 Size 小者優先佔地 ---
     function refreshCollision() {
         const markers = Array.from(document.querySelectorAll('.marker')), occupied = [];
         const dText = eventData.map(d => d._searchStr).join(' ');
 
         markers.sort((a, b) => {
-            // 1. 高亮最優先
             const isHa = a.classList.contains('highlight'), isHb = b.classList.contains('highlight');
             if (isHa !== isHb) return isHa ? -1 : 1;
             
-            // 2. Size 越小越優先 (精確點 > 區域)
+            // 修正重點：強制 Size 小者優先
             const sA = parseInt(a.dataset.size) || 0, sB = parseInt(b.dataset.size) || 0;
             if (sA !== sB) return sA - sB; 
             
-            // 3. 出現頻率高者優先
+            // 頻率作為最後參考
             const fA = dText.split(a.dataset.name).length - 1, fB = dText.split(b.dataset.name).length - 1;
             if (fA !== fB) return fB - fA;
             return 0;
@@ -390,11 +355,14 @@
             const label = m.querySelector('.label');
             if (!label) return;
             const rect = label.getBoundingClientRect();
+            // 檢查是否與已佔地的標籤重疊
             const overlap = occupied.some(o => !(rect.right < o.left || rect.left > o.right || rect.bottom < o.top || rect.top > o.bottom));
+            
             if (overlap && !m.classList.contains('highlight')) {
                 label.style.opacity = "0"; label.style.pointerEvents = "none";
             } else {
-                label.style.opacity = "1"; label.style.pointerEvents = "auto"; occupied.push(rect);
+                label.style.opacity = "1"; label.style.pointerEvents = "auto"; 
+                occupied.push(rect); // 優先佔領此區域
             }
         });
     }
@@ -403,8 +371,7 @@
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
         if(!img.offsetWidth) return;
         const min = Math.max(c.clientWidth / img.offsetWidth, c.clientHeight / img.offsetHeight);
-        pz.setOptions({ minScale: min });
-        if (pz.getScale() < min) pz.zoom(min, { animate: true });
+        pz.setOptions({ minScale: min }); if (pz.getScale() < min) pz.zoom(min, { animate: true });
     }
 
     function syncOverlay() {
@@ -420,10 +387,8 @@
         pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
-        
         const res = await fetch(`folder.csv?t=${Date.now()}`);
         const folders = (await res.text()).split('\n').filter(l => l.trim()).map(line => splitCSVLine(line)).slice(1);
-        
         const select = document.getElementById('folder-select');
         select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
         folders.forEach(f => { if(f[0]) { const opt = document.createElement('option'); opt.value = f[0]; opt.innerText = f[1] || f[0]; select.appendChild(opt); } });
