@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V11.0.2a</title>
+    <title>亞伯拉罕史地互動地圖 V11.0.2b</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -146,7 +146,7 @@
 <script>
     let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1;
 
-    // 第一刀：植入精確 CSV 解析 (只在這裡新增，不影響外觀)
+    // --- 精確 CSV 解析器 ---
     function splitCSVLine(line) {
         const result = [];
         let cur = '', inQuote = false;
@@ -169,7 +169,6 @@
         try {
             const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
             const dText = await dRes.text();
-            // 第二刀：loadProject 內使用 splitCSVLine
             const rows = dText.split('\n').filter(l => l.trim()).map(line => splitCSVLine(line));
             const dataRows = rows.slice(1);
             
@@ -185,7 +184,6 @@
                     const cRes = await fetch(`${folder}/coords-${i}.csv?t=${Date.now()}`);
                     if (!cRes.ok) break;
                     const cText = await cRes.text();
-                    // 第三刀：座標解析同步使用 splitCSVLine
                     const cRows = cText.split('\n').filter(l => l.trim()).map(line => splitCSVLine(line));
                     const header = cRows[0];
                     const sIdx = header.indexOf("Size"), nIdx = header.indexOf("地名"), xIdx = header.indexOf("百分比X"), yIdx = header.indexOf("百分比Y");
@@ -283,7 +281,6 @@
         let tx = 0, ty = 0;
         pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
         const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight, sc = pz.getScale();
-        // 維持 V11.0.0 的 FlyTo 公式
         pz.pan((c.clientWidth/2) - (px * sc), (c.clientHeight/2) - (py * sc), { animate: true });
     }
 
@@ -369,18 +366,21 @@
         });
     }
 
-    // 第四刀：植入 sorter.html 的正確排序權重 (其餘顯示邏輯不動)
+    // --- 關鍵修正：依照 sorter.html 正確權重排序 ---
     function refreshCollision() {
         const markers = Array.from(document.querySelectorAll('.marker')), occupied = [];
         const dText = eventData.map(d => d._searchStr).join(' ');
 
         markers.sort((a, b) => {
+            // 1. 高亮最優先
             const isHa = a.classList.contains('highlight'), isHb = b.classList.contains('highlight');
             if (isHa !== isHb) return isHa ? -1 : 1;
             
+            // 2. Size 越小越優先 (精確點 > 區域)
             const sA = parseInt(a.dataset.size) || 0, sB = parseInt(b.dataset.size) || 0;
             if (sA !== sB) return sA - sB; 
             
+            // 3. 出現頻率高者優先
             const fA = dText.split(a.dataset.name).length - 1, fB = dText.split(b.dataset.name).length - 1;
             if (fA !== fB) return fB - fA;
             return 0;
@@ -422,9 +422,7 @@
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
         
         const res = await fetch(`folder.csv?t=${Date.now()}`);
-        const fText = await res.text();
-        // 第五刀：folder 解析也同步
-        const folders = fText.split('\n').filter(l => l.trim()).map(line => splitCSVLine(line)).slice(1);
+        const folders = (await res.text()).split('\n').filter(l => l.trim()).map(line => splitCSVLine(line)).slice(1);
         
         const select = document.getElementById('folder-select');
         select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
