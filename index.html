@@ -368,7 +368,6 @@
         const markers = Array.from(document.querySelectorAll('.marker')), occupied = [];
         const dText = eventData.map(d => d._searchStr).join(' ');
 
-        // 核心排序邏輯修正：高亮優先，Size 小優先
         markers.sort((a, b) => {
             const isHa = a.classList.contains('highlight'), isHb = b.classList.contains('highlight');
             if (isHa !== isHb) return isHa ? -1 : 1;
@@ -384,7 +383,6 @@
             if (!label) return;
             const rect = label.getBoundingClientRect();
             const overlap = occupied.some(o => !(rect.right < o.left || rect.left > o.right || rect.bottom < o.top || rect.top > o.bottom));
-            
             if (overlap && !m.classList.contains('highlight')) {
                 label.style.opacity = "0"; 
                 label.style.pointerEvents = "none";
@@ -414,7 +412,7 @@
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
-        // 維持 V11.0.0 原始設定：包含 contain: 'outside'
+        // 初始化加入 contain: 'outside'
         pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
