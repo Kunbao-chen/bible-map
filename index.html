@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V13.3.3</title>
+    <title>亞伯拉罕史地互動地圖 V13.3.4</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -61,8 +61,8 @@
         <div class="fab-container">
             <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
             <div id="fab-menu" class="fab-menu" style="display:none; flex-direction:column; gap:6px;">
-                <button class="fab-item" onclick="pz.zoomIn({ animate: true, focal: { clientX: document.getElementById('map-section').clientWidth / 2, clientY: document.getElementById('map-section').clientHeight / 2 } })" style="width:34px; height:34px; border-radius:10px;">+</button>
-                <button class="fab-item" onclick="pz.zoomOut({ animate: true, focal: { clientX: document.getElementById('map-section').clientWidth / 2, clientY: document.getElementById('map-section').clientHeight / 2 } })" style="width:34px; height:34px; border-radius:10px;">-</button>
+                <button class="fab-item" onclick="pz.zoomIn({ animate: true })" style="width:34px; height:34px; border-radius:10px;">+</button>
+                <button class="fab-item" onclick="pz.zoomOut({ animate: true })" style="width:34px; height:34px; border-radius:10px;">-</button>
                 <button class="fab-item" onclick="resetView()" style="width:34px; height:34px; border-radius:10px;">↺</button>
                 <button class="fab-item" onclick="adjustFontSize(1)" style="width:34px; height:34px; border-radius:10px; font-weight:bold;">A+</button>
                 <button class="fab-item" onclick="adjustFontSize(-1)" style="width:34px; height:34px; border-radius:10px; font-weight:bold;">A-</button>
@@ -101,7 +101,6 @@
     let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13, fullText = '';
     let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
 
-    // 基礎功能與搜尋邏輯 (略，與 V13.3.0 一致)
     function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) { input.focus(); } else { hideHistory(); } }
     function handleSearch(keyword) {
         const input = document.getElementById('search-input'); const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase();
@@ -181,10 +180,8 @@
     function findBestMatch(t, db) { let b = null, m = Infinity; for (const i of db) { if (i.n === t) return i; if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } } } return b; }
     function parseLocationLogic(locStr, db) { const result = { paths: [], points: [] }; locStr.split('+').map(b => b.trim()).forEach(block => { if (block.includes('→')) { const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p); if (chain.length > 1) result.paths.push(chain); chain.forEach(p => result.points.push(p)); } else { const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db); if (pt) result.points.push(pt); } }); return result; }
 
-    // === 精準還原與修正區域 ===
     function applyMarkerStyles() {
         const s = pz ? pz.getScale() : 1;
-        // 回滾至 13.3.0：無論縮放，始終保持 anti = 1/s，確保地圖文字視覺大小不變
         const anti = s > 0 ? 1 / s : 1;
         document.querySelectorAll('.marker').forEach(m => { 
             const gain = parseInt(m.dataset.size)||0, label = m.querySelector('.label'); 
@@ -195,12 +192,9 @@
 
     function adjustFontSize(delta) { 
         baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); 
-        // 保留面板文字同步控制
         document.documentElement.style.setProperty('--base-fs', baseMarkerFontSize + 'px');
         applyMarkerStyles(); refreshCollision(); 
-        const cur = pz.getPan(); pz.pan(cur.x, cur.y, { force: true }); 
     }
-    // === 還原結束 ===
 
     function flyTo(pts) {
         if (!pts.length) return; const img = document.getElementById('bg-map'), container = document.getElementById('map-section'); if (!img.offsetWidth) return;
