@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V12.0.0</title>
+    <title>亞伯拉罕史地互動地圖 V12.0.1</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -301,45 +301,53 @@
         setTimeout(refreshCollision, 60); 
     }
 
-    function refreshCollision() {
-        const markers = Array.from(document.querySelectorAll('.marker'));
+function refreshCollision() {
+    // 1. 分出特權組與平民組
+    const allMarkers = Array.from(document.querySelectorAll('.marker'));
+    const highlights = allMarkers.filter(m => m.classList.contains('highlight'));
+    const commons = allMarkers.filter(m => !m.classList.contains('highlight'));
+    
+    // 2. 僅對平民組進行排序競爭
+    commons.sort((a, b) => {
+        // 第一階：Size 小優先
+        const aSize = parseInt(a.dataset.size) || 0;
+        const bSize = parseInt(b.dataset.size) || 0;
+        if (aSize !== bSize) return aSize - bSize;
+
+        // 第二階：頻率高優先
+        const aFreq = parseInt(a.dataset.freq) || 0;
+        const bFreq = parseInt(b.dataset.freq) || 0;
+        if (aFreq !== bFreq) return bFreq - aFreq;
+
+        // 第三階：確定性地名排序 (補丁)
+        return a.dataset.name.localeCompare(b.dataset.name);
+    });
+
+    const occupied = [];
+    
+    // 3. 處理平民組顯示邏輯（會互相迴避）
+    commons.forEach(m => {
+        const label = m.querySelector('.label');
+        const rect = label.getBoundingClientRect();
+        const isOverlap = occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom));
         
-        // --- [手術刀置換：導入 Sorter V8.0 權重算法四階確定性排序] ---
-        markers.sort((a, b) => {
-            // 1. 高亮
-            const aH = a.classList.contains('highlight') ? 1 : 0;
-            const bH = b.classList.contains('highlight') ? 1 : 0;
-            if (aH !== bH) return bH - aH;
-            // 2. Size 小優先
-            const aSize = parseInt(a.dataset.size) || 0;
-            const bSize = parseInt(b.dataset.size) || 0;
-            if (aSize !== bSize) return aSize - bSize;
-            // 3. 次數多優先
-            const aFreq = parseInt(a.dataset.freq) || 0;
-            const bFreq = parseInt(b.dataset.freq) || 0;
-            if (aFreq !== bFreq) return bFreq - aFreq;
+        if (isOverlap) {
+            label.style.opacity = "0";
+            m.style.pointerEvents = "none";
+        } else { 
+            label.style.opacity = "1"; 
+            m.style.pointerEvents = "auto";
+            occupied.push(rect); 
+        }
+    });
 
-            // 4. [補丁] 確定性平手處理：依地名字典順序排序
-            return a.dataset.name.localeCompare(b.dataset.name);
-        });
-        // ------------------------------------------
-
-        const occupied = [];
-        markers.forEach(m => {
-            const label = m.querySelector('.label');
-            const rect = label.getBoundingClientRect();
-            const isOverlap = occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom));
-            
-            if (isOverlap && !m.classList.contains('highlight')) {
-                label.style.opacity = "0";
-                m.style.pointerEvents = "none";
-            } else { 
-                label.style.opacity = "1"; 
-                m.style.pointerEvents = "auto";
-                occupied.push(rect); 
-            }
-        });
-    }
+    // 4. 特權組直接強制顯示，不參與 occupied 計算，也不被 occupied 影響
+    highlights.forEach(m => {
+        const label = m.querySelector('.label');
+        label.style.opacity = "1";
+        m.style.pointerEvents = "auto";
+    });
+}
 
     function initResizers() {
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
