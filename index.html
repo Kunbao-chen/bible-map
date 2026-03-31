@@ -304,17 +304,23 @@
     function refreshCollision() {
         const markers = Array.from(document.querySelectorAll('.marker'));
         
-        // --- [手術刀置換：導入 Sorter V8.0 權重算法] ---
+        // --- [手術刀置換：導入 Sorter V8.0 權重算法四階確定性排序] ---
         markers.sort((a, b) => {
+            // 1. 高亮
             const aH = a.classList.contains('highlight') ? 1 : 0;
             const bH = b.classList.contains('highlight') ? 1 : 0;
             if (aH !== bH) return bH - aH;
+            // 2. Size 小優先
             const aSize = parseInt(a.dataset.size) || 0;
             const bSize = parseInt(b.dataset.size) || 0;
             if (aSize !== bSize) return aSize - bSize;
+            // 3. 次數多優先
             const aFreq = parseInt(a.dataset.freq) || 0;
             const bFreq = parseInt(b.dataset.freq) || 0;
-            return bFreq - aFreq;
+            if (aFreq !== bFreq) return bFreq - aFreq;
+
+            // 4. [補丁] 確定性平手處理：依地名字典順序排序
+            return a.dataset.name.localeCompare(b.dataset.name);
         });
         // ------------------------------------------
 
