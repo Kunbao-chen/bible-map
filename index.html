@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V13.2.1</title>
+    <title>亞伯拉罕史地互動地圖 V13.2.2</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -34,10 +34,10 @@
         @media (min-width: 801px), (orientation: landscape) { #resizer-main { width: 12px; cursor: col-resize; height: 100%; } #resizer-main::after { content: "⋮"; } }
         @media (max-width: 800px) and (orientation: portrait) { #resizer-main { height: 16px; cursor: row-resize; width: 100%; } #resizer-main::after { content: "⋯"; } }
         #side-panel { background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-        #info-area { display: none; flex-direction: column; background: #fff; flex: 0 0 45%; min-height: 44px; position: relative; }
-        #info-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; height: 44px; position: relative; z-index: 20; }
-        #info-body { padding: 15px; overflow-y: auto; flex: 1; position: relative; z-index: 1; }
-        #resizer-inner { height: 12px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; touch-action: none; flex-shrink: 0; border-top: 1px solid #ddd; }
+        #info-area { display: none; flex-direction: column; background: #fff; flex: 0 0 45%; min-height: 44px; overflow: hidden; }
+        #info-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; height: 44px; z-index: 5; }
+        #info-body { padding: 15px; overflow-y: auto; flex: 1; }
+        #resizer-inner { height: 12px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; touch-action: none; flex-shrink: 0; border-top: 1px solid #ddd; z-index: 10; }
         #list-container { flex: 1; overflow-y: auto; }
         tr.active-row td { background: #fffde7; font-weight: bold; border-left: 5px solid var(--gold); }
         .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
@@ -169,7 +169,7 @@
             window.onmousemove = window.ontouchmove = (ev) => { const x = ev.clientX || ev.touches[0].clientX, y = ev.clientY || ev.touches[0].clientY; if (window.innerWidth < window.innerHeight && window.matchMedia("(orientation: portrait)").matches) { side.style.flex = `0 0 ${Math.max(100, Math.min(startH + (startY - y), window.innerHeight * 0.8))}px`; } else { side.style.flex = "none"; side.style.width = `${Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7))}px`; } syncOverlay(); updateMinScale(); refreshCollision(); };
             window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
         };
-        rInner.onmousedown = rInner.ontouchstart = (e) => { e.preventDefault(); startY = e.clientY || e.touches[0].clientY; startH = info.offsetHeight; window.onmousemove = window.ontouchmove = (ev) => { const y = ev.clientY || ev.touches[0].clientY; info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.9))}px`; }; window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; }; };
+        rInner.onmousedown = rInner.ontouchstart = (e) => { e.preventDefault(); startY = e.clientY || e.touches[0].clientY; startH = info.offsetHeight; window.onmousemove = window.ontouchmove = (ev) => { const y = ev.clientY || ev.touches[0].clientY; info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.85))}px`; }; window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; }; };
     }
 
     function renderTable(data) { const tbody = document.getElementById('table-body'); tbody.innerHTML = ''; data.forEach((item, i) => { const tr = document.createElement('tr'); tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`; tr.onclick = () => selectEvent(i); tbody.appendChild(tr); }); }
