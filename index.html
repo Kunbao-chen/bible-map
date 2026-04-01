@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.0.2</title>
+    <title>聖經史地互動地圖 V1.0.5</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -12,10 +12,10 @@
         body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium", sans-serif; }
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
 
-        /* 手機直立模式修正：移除 !important 確保 JS 能動態覆蓋 */
+        /* 手機直立模式：手術刀修正 - 移除鎖死 !important，讓 JS 能夠指定還原位置 */
         @media (max-width: 800px) and (orientation: portrait) { 
             #app-container { flex-direction: column; } 
-            #side-panel { width: 100%; flex: 0 0 33.33dvh; } 
+            #side-panel { width: 100%; height: 33.33dvh; flex: none; } 
         }
 
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
@@ -109,24 +109,15 @@
 </div>
 
 <script>
-    let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13, fullText = '';
+    // V1.0.5 狀態記憶變數
+    let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13, fullText = '';
     let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
+    let lastPortraitHeight = "33.33dvh"; // 記憶直立高度
+    let lastLandscapeWidth = "33.33%";    // 記憶橫向寬度
 
+    // --- 基礎互動函式 (省略以保持焦點在拉桿修正，邏輯同1.0.0) ---
     function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) { input.focus(); } else { hideHistory(); } }
-    
-    function handleSearch(keyword) {
-        const input = document.getElementById('search-input'); const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase();
-        const clearBtn = document.getElementById('search-clear'); clearBtn.style.display = term ? 'block' : 'none';
-        if (!term) { filteredData = [...eventData]; } else {
-            const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const regex = new RegExp(safeTerm, 'gi');
-            filteredData = eventData.map(item => { const match = item._searchStr.match(regex); return { ...item, score: match ? match.length : 0 }; })
-                            .filter(item => item.score > 0)
-                            .sort((a, b) => parseInt(a.id) - parseInt(b.id)); 
-        }
-        renderTable(filteredData); if (term && keyword === undefined) saveHistory(term);
-        if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; }
-    }
-
+    function handleSearch(keyword) { const input = document.getElementById('search-input'); const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase(); const clearBtn = document.getElementById('search-clear'); clearBtn.style.display = term ? 'block' : 'none'; if (!term) { filteredData = [...eventData]; } else { const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const regex = new RegExp(safeTerm, 'gi'); filteredData = eventData.map(item => { const match = item._searchStr.match(regex); return { ...item, score: match ? match.length : 0 }; }).filter(item => item.score > 0).sort((a, b) => parseInt(a.id) - parseInt(b.id)); } renderTable(filteredData); if (term && keyword === undefined) saveHistory(term); if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; } }
     function clearSearch() { const lastId = currentEventIdx !== -1 ? filteredData[currentEventIdx].id : null; const input = document.getElementById('search-input'); input.value = ''; input.classList.remove('open'); document.getElementById('search-clear').style.display = 'none'; hideHistory(); handleSearch(""); if (lastId) { const newIdx = filteredData.findIndex(d => d.id === lastId); if (newIdx !== -1) { selectEvent(newIdx); const r = document.getElementById('table-body').rows[newIdx]; if(r) r.scrollIntoView({block:'center'}); } } }
     function saveHistory(term) { if (!term.trim()) return; searchHistory = [term, ...searchHistory.filter(h => h !== term)].slice(0, 10); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
     function renderHistory() { const panel = document.getElementById('search-history'); panel.innerHTML = searchHistory.map(h => `<div class="history-item" onclick="useHistory('${h}')"><span>${h}</span><span style="color:#ccc" onclick="deleteHistory(event, '${h}')">×</span></div>`).join(''); }
@@ -168,34 +159,45 @@
         allMarkers.filter(m => m.classList.contains('highlight')).forEach(m => { const label = m.querySelector('.label'); label.style.opacity = "1"; m.style.pointerEvents = "auto"; });
     }
 
-    // V1.0.2 手術刀核心：維度鎖定與瞬間清場邏輯
+    // V1.0.5 手術刀核心：雙軌狀態記憶邏輯
     function initResizers() {
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel'), rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
         let startX, startY, startW, startH;
+
         rMain.onmousedown = rMain.ontouchstart = (e) => {
-            e.preventDefault(); const px = e.clientX || e.touches[0].clientX, py = e.clientY || e.touches[0].clientY; 
+            e.preventDefault();
+            const px = e.clientX || e.touches[0].clientX, py = e.clientY || e.touches[0].clientY;
             startX = px; startY = py; startW = side.offsetWidth; startH = side.offsetHeight;
-            
-            window.onmousemove = window.ontouchmove = (ev) => { 
-                const x = ev.clientX || ev.touches[0].clientX, y = ev.clientY || ev.touches[0].clientY; 
-                if (window.innerWidth < window.innerHeight && window.matchMedia("(orientation: portrait)").matches) { 
-                    side.style.width = ""; // 手術刀：拉動瞬間即確保寬度不干擾
+
+            window.onmousemove = window.ontouchmove = (ev) => {
+                const x = ev.clientX || ev.touches[0].clientX, y = ev.clientY || ev.touches[0].clientY;
+                if (window.innerWidth < window.innerHeight) {
+                    // 直立模式：記錄高度
                     const newH = Math.max(100, Math.min(startH + (startY - y), window.innerHeight * 0.8));
+                    side.style.height = newH + "px";
                     side.style.flex = `0 0 ${newH}px`;
-                    side.style.height = `${newH}px`;
-                } else { 
-                    side.style.height = ""; // 手術刀：拉動瞬間即確保高度不干擾
-                    side.style.flex = "none"; 
-                    side.style.width = `${Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7))}px`; 
-                } 
-                syncOverlay(); updateMinScale(); refreshCollision(); 
+                    side.style.width = ""; 
+                } else {
+                    // 橫向模式：記錄寬度
+                    const newW = Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7));
+                    side.style.width = newW + "px";
+                    side.style.height = "";
+                    side.style.flex = "none";
+                }
+                syncOverlay(); updateMinScale(); refreshCollision();
             };
-            window.onmouseup = window.ontouchend = () => { 
-                window.onmousemove = window.ontouchmove = null; 
-                // 手術刀：放開拉桿動作結束，再次執行維度清理，防止數值被帶到另一個維度當初始值
-                if (window.innerWidth < window.innerHeight) { side.style.width = ""; } else { side.style.height = ""; }
+
+            window.onmouseup = window.ontouchend = () => {
+                window.onmousemove = window.ontouchmove = null;
+                // 手術刀：動作結束，記錄該維度的最後位置
+                if (window.innerWidth < window.innerHeight) {
+                    lastPortraitHeight = side.style.height;
+                } else {
+                    lastLandscapeWidth = side.style.width;
+                }
             };
         };
+
         rInner.onmousedown = rInner.ontouchstart = (e) => { e.preventDefault(); startY = e.clientY || e.touches[0].clientY; startH = info.offsetHeight; window.onmousemove = window.ontouchmove = (ev) => { const y = ev.clientY || ev.touches[0].clientY; info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.85))}px`; }; window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; }; };
     }
 
@@ -216,58 +218,36 @@
     function parseLocationLogic(locStr, db) { const result = { paths: [], points: [] }; locStr.split('+').map(b => b.trim()).forEach(block => { if (block.includes('→')) { const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p); if (chain.length > 1) result.paths.push(chain); chain.forEach(p => result.points.push(p)); } else { const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db); if (pt) result.points.push(pt); } }); return result; }
 
     function applyMarkerStyles() {
-        const s = pz ? pz.getScale() : 1;
-        const anti = s > 0 ? 1 / s : 1;
+        const s = pz ? pz.getScale() : 1; const anti = s > 0 ? 1 / s : 1;
         document.querySelectorAll('.marker').forEach(m => { 
             const gain = parseInt(m.dataset.size)||0, label = m.querySelector('.label'); 
-            label.style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px'; 
-            m.style.transform = `translate(-50%, -50%) scale(${anti})`; 
+            label.style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px'; m.style.transform = `translate(-50%, -50%) scale(${anti})`; 
         });
     }
-
-    function adjustFontSize(delta) { 
-        baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); 
-        document.documentElement.style.setProperty('--base-fs', baseMarkerFontSize + 'px');
-        applyMarkerStyles(); refreshCollision(); 
-    }
-
-    function flyTo(pts) {
-        if (!pts.length) return; const img = document.getElementById('bg-map'), container = document.getElementById('map-section'); if (!img.offsetWidth) return;
-        const containerRect = container.getBoundingClientRect(), imgRect = img.getBoundingClientRect(), sc = pz.getScale(), currentPan = pz.getPan();
-        let avgPctX = 0, avgPctY = 0; pts.forEach(p => { avgPctX += parseFloat(p.x); avgPctY += parseFloat(p.y); }); avgPctX /= pts.length; avgPctY /= pts.length;
-        const currentMarkerX = (imgRect.left - containerRect.left) + (imgRect.width * (avgPctX / 100)), currentMarkerY = (imgRect.top - containerRect.top) + (imgRect.height * (avgPctY / 100));
-        pz.pan(currentPan.x + (((containerRect.width/2)-currentMarkerX)/sc), currentPan.y + (((containerRect.height/2)-currentMarkerY)/sc), { animate: true, duration: 500 });
-    }
-    function updateMinScale() {
-        const img = document.getElementById('bg-map'), c = document.getElementById('map-section'); if (!img.offsetWidth) return;
-        const min = Math.max(c.clientWidth / img.offsetWidth, c.clientHeight / img.offsetHeight); pz.setOptions({ minScale: min });
-        if (pz.getScale() < min) pz.zoom(min, { animate: false });
-        const cur = pz.getPan(); pz.pan(cur.x, cur.y, { force: true });
-    }
+    function adjustFontSize(delta) { baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); document.documentElement.style.setProperty('--base-fs', baseMarkerFontSize + 'px'); applyMarkerStyles(); refreshCollision(); }
+    function flyTo(pts) { if (!pts.length) return; const img = document.getElementById('bg-map'), container = document.getElementById('map-section'); if (!img.offsetWidth) return; const containerRect = container.getBoundingClientRect(), imgRect = img.getBoundingClientRect(), sc = pz.getScale(), currentPan = pz.getPan(); let avgPctX = 0, avgPctY = 0; pts.forEach(p => { avgPctX += parseFloat(p.x); avgPctY += parseFloat(p.y); }); avgPctX /= pts.length; avgPctY /= pts.length; const currentMarkerX = (imgRect.left - containerRect.left) + (imgRect.width * (avgPctX / 100)), currentMarkerY = (imgRect.top - containerRect.top) + (imgRect.height * (avgPctY / 100)); pz.pan(currentPan.x + (((containerRect.width/2)-currentMarkerX)/sc), currentPan.y + (((containerRect.height/2)-currentMarkerY)/sc), { animate: true, duration: 500 }); }
+    function updateMinScale() { const img = document.getElementById('bg-map'), c = document.getElementById('map-section'); if (!img.offsetWidth) return; const min = Math.max(c.clientWidth / img.offsetWidth, c.clientHeight / img.offsetHeight); pz.setOptions({ minScale: min }); if (pz.getScale() < min) pz.zoom(min, { animate: false }); const cur = pz.getPan(); pz.pan(cur.x, cur.y, { force: true }); }
     function syncOverlay() { const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container'); ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px'; }
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
-
-    function simulateWheel(delta) {
-        const rect = document.getElementById('map-section').getBoundingClientRect();
-        pz.zoomWithWheel({
-            clientX: rect.left + rect.width / 2,
-            clientY: rect.top + rect.height / 2,
-            deltaY: delta,
-            preventDefault: () => {}
-        });
-    }
+    function simulateWheel(delta) { const rect = document.getElementById('map-section').getBoundingClientRect(); pz.zoomWithWheel({ clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2, deltaY: delta, preventDefault: () => {} }); }
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element'); pz = Panzoom(el, { maxScale: 8, contain: 'outside', animate: true });
         
-        // 手術刀：Resize 事件強制清場，無需等待使用者觸碰拉桿
+        // V1.0.5 旋轉還原邏輯
         window.addEventListener('resize', () => { 
             const side = document.getElementById('side-panel');
-            if (window.innerWidth < window.innerHeight) { 
-                side.style.width = ""; 
-            } else { 
-                side.style.height = ""; 
+            if (window.innerWidth < window.innerHeight) {
+                // 轉向直立：恢復上次高度，清除寬度
+                side.style.width = "";
+                side.style.height = lastPortraitHeight;
+                side.style.flex = `0 0 ${lastPortraitHeight}`;
+            } else {
+                // 轉向橫向：恢復上次寬度，清除高度
+                side.style.height = "";
+                side.style.width = lastLandscapeWidth;
+                side.style.flex = "none";
             }
             syncOverlay(); updateMinScale(); refreshCollision(); 
         });
