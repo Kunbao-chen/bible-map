@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.0.5</title>
+    <title>聖經史地互動地圖 V1.0.6</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -12,7 +12,6 @@
         body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium", sans-serif; }
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
 
-        /* 手機直立模式：手術刀修正 - 移除鎖死 !important，讓 JS 能夠指定還原位置 */
         @media (max-width: 800px) and (orientation: portrait) { 
             #app-container { flex-direction: column; } 
             #side-panel { width: 100%; height: 33.33dvh; flex: none; } 
@@ -28,6 +27,16 @@
         .marker.highlight { z-index: 1000 !important; }
         .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
         @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
+
+        /* V1.0.6 經文連結樣式 */
+        .script-link { color: #2980b9; text-decoration: underline; cursor: pointer; font-weight: bold; }
+        .script-link:hover { color: #d32f2f; }
+        
+        #script-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .script-box { width: 90%; height: 85%; background: white; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .script-toolbar { padding: 10px; background: #f1f1f1; display: flex; gap: 8px; border-bottom: 1px solid #ccc; align-items: center; }
+        .script-toolbar button { padding: 6px 12px; border-radius: 6px; border: 1px solid #bbb; background: white; cursor: pointer; font-size: 13px; }
+        .script-toolbar button.active { background: var(--dark); color: white; border-color: var(--dark); }
 
         .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
         .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); padding: 2px; }
@@ -70,7 +79,7 @@
         </div>
         
         <div class="fab-container">
-            <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
+            <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38(1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
             <div id="fab-menu" class="fab-menu" style="display:none; flex-direction:column; gap:6px;">
                 <button onclick="simulateWheel(-1)">+</button>
                 <button onclick="simulateWheel(1)">-</button>
@@ -109,13 +118,43 @@
 </div>
 
 <script>
-    // V1.0.5 狀態記憶變數
+    // V1.0.6 狀態記憶與對照表
     let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13, fullText = '';
     let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
-    let lastPortraitHeight = "33.33dvh"; // 記憶直立高度
-    let lastLandscapeWidth = "33.33%";    // 記憶橫向寬度
+    let lastPortraitHeight = "33.33dvh"; 
+    let lastLandscapeWidth = "33.33%";    
 
-    // --- 基礎互動函式 (省略以保持焦點在拉桿修正，邏輯同1.0.0) ---
+    const SCRIPTURE_MAP = {
+        "創": { std: "gen", lds: "ot/gen", fhl: "創" }, "出": { std: "ex", lds: "ot/ex", fhl: "出" }, "利": { std: "lev", lds: "ot/lev", fhl: "利" },
+        "民": { std: "num", lds: "ot/num", fhl: "民" }, "申": { std: "deut", lds: "ot/deut", fhl: "申" }, "書": { std: "josh", lds: "ot/josh", fhl: "書" },
+        "士": { std: "judg", lds: "ot/judg", fhl: "士" }, "得": { std: "ruth", lds: "ot/ruth", fhl: "得" }, "撒上": { std: "1-sam", lds: "ot/1-sam", fhl: "撒上" },
+        "撒下": { std: "2-sam", lds: "ot/2-sam", fhl: "撒下" }, "王上": { std: "1-kgs", lds: "ot/1-kgs", fhl: "王上" }, "王下": { std: "2-kgs", lds: "ot/2-kgs", fhl: "王下" },
+        "代上": { std: "1-chr", lds: "ot/1-chr", fhl: "代上" }, "代下": { std: "2-chr", lds: "ot/2-chr", fhl: "代下" }, "拉": { std: "ezra", lds: "ot/ezra", fhl: "拉" },
+        "尼": { std: "neh", lds: "ot/neh", fhl: "尼" }, "斯": { std: "esth", lds: "ot/esth", fhl: "斯" }, "伯": { std: "job", lds: "ot/job", fhl: "伯" },
+        "詩": { std: "ps", lds: "ot/ps", fhl: "詩" }, "箴": { std: "prov", lds: "ot/prov", fhl: "箴" }, "傳": { std: "eccl", lds: "ot/eccl", fhl: "傳" },
+        "歌": { std: "song", lds: "ot/song", fhl: "歌" }, "賽": { std: "isa", lds: "ot/isa", fhl: "賽" }, "耶": { std: "jer", lds: "ot/jer", fhl: "耶" },
+        "哀": { std: "lam", lds: "ot/lam", fhl: "哀" }, "結": { std: "ezek", lds: "ot/ezek", fhl: "結" }, "但": { std: "dan", lds: "ot/dan", fhl: "但" },
+        "何": { std: "hos", lds: "ot/hos", fhl: "何" }, "約珥": { std: "joel", lds: "ot/joel", fhl: "珥" }, "阿": { std: "amos", lds: "ot/amos", fhl: "摩" },
+        "俄": { std: "obad", lds: "ot/obad", fhl: "俄" }, "拿": { std: "jonah", lds: "ot/jonah", fhl: "拿" }, "彌": { std: "micah", lds: "ot/micah", fhl: "彌" },
+        "鴻": { std: "nahum", lds: "ot/nahum", fhl: "鴻" }, "哈": { std: "hab", lds: "ot/hab", fhl: "哈" }, "番": { std: "zeph", lds: "ot/zeph", fhl: "番" },
+        "該": { std: "hag", lds: "ot/hag", fhl: "該" }, "撒迦": { std: "zech", lds: "ot/zech", fhl: "亞" }, "瑪": { std: "mal", lds: "ot/mal", fhl: "瑪" },
+        "太": { std: "matt", lds: "nt/matt", fhl: "太" }, "可": { std: "mark", lds: "nt/mark", fhl: "可" }, "路": { std: "luke", lds: "nt/luke", fhl: "路" },
+        "約": { std: "john", lds: "nt/john", fhl: "約" }, "徒": { std: "acts", lds: "nt/acts", fhl: "徒" }, "羅": { std: "rom", lds: "nt/rom", fhl: "羅" },
+        "林前": { std: "1-cor", lds: "nt/1-cor", fhl: "林前" }, "林後": { std: "2-cor", lds: "nt/2-cor", fhl: "林後" }, "加": { std: "gal", lds: "nt/gal", fhl: "加" },
+        "弗": { std: "eph", lds: "nt/eph", fhl: "弗" }, "腓": { std: "phil", lds: "nt/phil", fhl: "腓" }, "西": { std: "col", lds: "nt/col", fhl: "西" },
+        "帖前": { std: "1-thess", lds: "nt/1-thess", fhl: "帖前" }, "帖後": { std: "2-thess", lds: "nt/2-thess", fhl: "帖後" }, "提前": { std: "1-tim", lds: "nt/1-tim", fhl: "提前" },
+        "提後": { std: "2-tim", lds: "nt/2-tim", fhl: "提後" }, "多": { std: "titus", lds: "nt/titus", fhl: "多" }, "門": { std: "philem", lds: "nt/philem", fhl: "門" },
+        "希": { std: "heb", lds: "nt/heb", fhl: "希" }, "雅": { std: "jas", lds: "nt/jas", fhl: "雅" }, "彼前": { std: "1-pet", lds: "nt/1-pet", fhl: "彼前" },
+        "彼後": { std: "2-pet", lds: "nt/2-pet", fhl: "彼後" }, "約一": { std: "1-jn", lds: "nt/1-jn", fhl: "約一" }, "約二": { std: "2-jn", lds: "nt/2-jn", fhl: "約二" },
+        "約三": { std: "3-jn", lds: "nt/3-jn", fhl: "約三" }, "猶": { std: "jude", lds: "nt/jude", fhl: "猶" }, "啟": { std: "rev", lds: "nt/rev", fhl: "啟" },
+        "腓一": { std: "1-ne", lds: "bofm/1-ne", fhl: null }, "腓二": { std: "2-ne", lds: "bofm/2-ne", fhl: null }, "雅各": { std: "jacob", lds: "bofm/jacob", fhl: null },
+        "以挪": { std: "enos", lds: "bofm/enos", fhl: null }, "雅龍": { std: "jarom", lds: "bofm/jarom", fhl: null }, "奧": { std: "omni", lds: "bofm/omni", fhl: null },
+        "摩爾": { std: "w-of-m", lds: "bofm/w-of-m", fhl: null }, "摩賽": { std: "mosiah", lds: "bofm/mosiah", fhl: null }, "阿爾": { std: "alma", lds: "bofm/alma", fhl: null },
+        "希拉": { std: "hel", lds: "bofm/hel", fhl: null }, "腓三": { std: "3-ne", lds: "bofm/3-ne", fhl: null }, "腓四": { std: "4-ne", lds: "bofm/4-ne", fhl: null },
+        "摩爾門": { std: "morm", lds: "bofm/morm", fhl: null }, "以帖": { std: "ether", lds: "bofm/ether", fhl: null }, "摩羅": { std: "moro", lds: "bofm/moro", fhl: null },
+        "教約": { std: "dc", lds: "dc-testament/dc", fhl: null }, "摩西": { std: "moses", lds: "pgp/moses", fhl: null }, "亞伯": { std: "abr", lds: "pgp/abr", fhl: null }
+    };
+
     function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) { input.focus(); } else { hideHistory(); } }
     function handleSearch(keyword) { const input = document.getElementById('search-input'); const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase(); const clearBtn = document.getElementById('search-clear'); clearBtn.style.display = term ? 'block' : 'none'; if (!term) { filteredData = [...eventData]; } else { const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const regex = new RegExp(safeTerm, 'gi'); filteredData = eventData.map(item => { const match = item._searchStr.match(regex); return { ...item, score: match ? match.length : 0 }; }).filter(item => item.score > 0).sort((a, b) => parseInt(a.id) - parseInt(b.id)); } renderTable(filteredData); if (term && keyword === undefined) saveHistory(term); if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; } }
     function clearSearch() { const lastId = currentEventIdx !== -1 ? filteredData[currentEventIdx].id : null; const input = document.getElementById('search-input'); input.value = ''; input.classList.remove('open'); document.getElementById('search-clear').style.display = 'none'; hideHistory(); handleSearch(""); if (lastId) { const newIdx = filteredData.findIndex(d => d.id === lastId); if (newIdx !== -1) { selectEvent(newIdx); const r = document.getElementById('table-body').rows[newIdx]; if(r) r.scrollIntoView({block:'center'}); } } }
@@ -159,50 +198,104 @@
         allMarkers.filter(m => m.classList.contains('highlight')).forEach(m => { const label = m.querySelector('.label'); label.style.opacity = "1"; m.style.pointerEvents = "auto"; });
     }
 
-    // V1.0.5 手術刀核心：雙軌狀態記憶邏輯
     function initResizers() {
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel'), rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
         let startX, startY, startW, startH;
-
         rMain.onmousedown = rMain.ontouchstart = (e) => {
-            e.preventDefault();
-            const px = e.clientX || e.touches[0].clientX, py = e.clientY || e.touches[0].clientY;
+            e.preventDefault(); const px = e.clientX || e.touches[0].clientX, py = e.clientY || e.touches[0].clientY;
             startX = px; startY = py; startW = side.offsetWidth; startH = side.offsetHeight;
-
             window.onmousemove = window.ontouchmove = (ev) => {
                 const x = ev.clientX || ev.touches[0].clientX, y = ev.clientY || ev.touches[0].clientY;
                 if (window.innerWidth < window.innerHeight) {
-                    // 直立模式：記錄高度
                     const newH = Math.max(100, Math.min(startH + (startY - y), window.innerHeight * 0.8));
-                    side.style.height = newH + "px";
-                    side.style.flex = `0 0 ${newH}px`;
-                    side.style.width = ""; 
+                    side.style.height = newH + "px"; side.style.flex = `0 0 ${newH}px`; side.style.width = ""; 
                 } else {
-                    // 橫向模式：記錄寬度
                     const newW = Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7));
-                    side.style.width = newW + "px";
-                    side.style.height = "";
-                    side.style.flex = "none";
+                    side.style.width = newW + "px"; side.style.height = ""; side.style.flex = "none";
                 }
                 syncOverlay(); updateMinScale(); refreshCollision();
             };
-
             window.onmouseup = window.ontouchend = () => {
                 window.onmousemove = window.ontouchmove = null;
-                // 手術刀：動作結束，記錄該維度的最後位置
-                if (window.innerWidth < window.innerHeight) {
-                    lastPortraitHeight = side.style.height;
-                } else {
-                    lastLandscapeWidth = side.style.width;
-                }
+                if (window.innerWidth < window.innerHeight) lastPortraitHeight = side.style.height;
+                else lastLandscapeWidth = side.style.width;
             };
         };
-
         rInner.onmousedown = rInner.ontouchstart = (e) => { e.preventDefault(); startY = e.clientY || e.touches[0].clientY; startH = info.offsetHeight; window.onmousemove = window.ontouchmove = (ev) => { const y = ev.clientY || ev.touches[0].clientY; info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.85))}px`; }; window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; }; };
     }
 
     function renderTable(data) { const tbody = document.getElementById('table-body'); tbody.innerHTML = ''; data.forEach((item, i) => { const tr = document.createElement('tr'); tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`; tr.onclick = () => selectEvent(i); tbody.appendChild(tr); }); }
-    function updateInfoPanel(item) { document.getElementById('info-area').style.display = 'flex'; document.getElementById('info-title').innerText = item.event; document.getElementById('info-time').innerText = item.time; document.getElementById('info-path').innerText = `地點：${item.loc}`; document.getElementById('info-script').innerText = item.script; document.getElementById('info-note').innerText = item.note; }
+    
+    // V1.0.6 手術刀：自動化經文導航
+    function updateInfoPanel(item) { 
+        document.getElementById('info-area').style.display = 'flex'; 
+        document.getElementById('info-title').innerText = item.event; 
+        document.getElementById('info-time').innerText = item.time; 
+        document.getElementById('info-path').innerText = `地點：${item.loc}`; 
+        
+        // 解析經文出處並轉化為連結
+        const regex = /([\u4e00-\u9fa5]+)\s*(\d+):(\d+)/g;
+        document.getElementById('info-script').innerHTML = item.script.replace(regex, (match, book, chap, sec) => {
+            if (SCRIPT_MAP[book]) return `<span class="script-link" onclick="openScripture('${book}', ${chap}, ${sec})">${match}</span>`;
+            return match;
+        });
+        document.getElementById('info-note').innerText = item.note; 
+    }
+
+    // V1.0.6 新增：多源燈箱函式
+    function openScripture(book, chap, sec) {
+        const overlay = document.createElement('div');
+        overlay.id = 'script-overlay';
+        overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+        
+        const box = document.createElement('div');
+        box.className = 'script-box';
+        
+        const toolbar = document.createElement('div');
+        toolbar.className = 'script-toolbar';
+        
+        const btnLds = document.createElement('button');
+        btnLds.id = 'btn-lds'; btnLds.innerText = 'LDS 來源';
+        btnLds.onclick = () => changeScriptSource('lds', book, chap, sec);
+        
+        const btnFhl = document.createElement('button');
+        btnFhl.id = 'btn-fhl'; btnFhl.innerText = '備用 (和合本)';
+        btnFhl.onclick = () => changeScriptSource('fhl', book, chap, sec);
+        
+        const btnClose = document.createElement('button');
+        btnClose.style.marginLeft = 'auto'; btnClose.innerText = '關閉';
+        btnClose.onclick = () => overlay.remove();
+        
+        const iframe = document.createElement('iframe');
+        iframe.id = 'script-viewer';
+        iframe.style = "flex:1; border:none; background:white;";
+        
+        toolbar.appendChild(btnLds);
+        if(SCRIPT_MAP[book].fhl) toolbar.appendChild(btnFhl);
+        toolbar.appendChild(btnClose);
+        box.appendChild(toolbar);
+        box.appendChild(iframe);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        
+        // 預設載入來源
+        changeScriptSource('lds', book, chap, sec);
+    }
+
+    function changeScriptSource(type, book, chap, sec) {
+        const viewer = document.getElementById('script-viewer');
+        const entry = SCRIPT_MAP[book];
+        document.querySelectorAll('.script-toolbar button').forEach(b => b.classList.remove('active'));
+        
+        if (type === 'lds') {
+            document.getElementById('btn-lds').classList.add('active');
+            viewer.src = `https://www.churchofjesuschrist.org/study/scriptures/${entry.lds}/${chap}?lang=zho&id=p${sec}#p${sec}`;
+        } else {
+            document.getElementById('btn-fhl').classList.add('active');
+            viewer.src = `https://bible.fhl.net/new/read.php?chineses=${encodeURIComponent(entry.fhl)}&chap=${chap}&sec=${sec}`;
+        }
+    }
+
     function toggleInfo() { const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), area = document.getElementById('info-area'); if (body.style.display === 'none') { body.style.display = 'block'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; } else { body.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; } }
     function parseCSV(t) { const rows = []; let row = [], cell = '', q = false; for (let i = 0; i < t.length; i++) { let c = t[i], n = t[i+1]; if (c === '"' && q && n === '"') { cell += '"'; i++; } else if (c === '"') q = !q; else if (c === ',' && !q) { row.push(cell.trim()); cell = ''; } else if ((c === '\n' || c === '\r') && !q) { if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); } row = []; cell = ''; if (c === '\r' && n === '\n') i++; } else cell += c; } if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); } return rows; }
 
@@ -234,24 +327,15 @@
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element'); pz = Panzoom(el, { maxScale: 8, contain: 'outside', animate: true });
-        
-        // V1.0.5 旋轉還原邏輯
         window.addEventListener('resize', () => { 
             const side = document.getElementById('side-panel');
             if (window.innerWidth < window.innerHeight) {
-                // 轉向直立：恢復上次高度，清除寬度
-                side.style.width = "";
-                side.style.height = lastPortraitHeight;
-                side.style.flex = `0 0 ${lastPortraitHeight}`;
+                side.style.width = ""; side.style.height = lastPortraitHeight; side.style.flex = `0 0 ${lastPortraitHeight}`;
             } else {
-                // 轉向橫向：恢復上次寬度，清除高度
-                side.style.height = "";
-                side.style.width = lastLandscapeWidth;
-                side.style.flex = "none";
+                side.style.height = ""; side.style.width = lastLandscapeWidth; side.style.flex = "none";
             }
             syncOverlay(); updateMinScale(); refreshCollision(); 
         });
-
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
         const res = await fetch(`folder.csv?t=${Date.now()}`); const folders = parseCSV(await res.text()).slice(1);
