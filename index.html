@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.0.6</title>
+    <title>聖經史地互動地圖 V1.0.6.1</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -28,10 +28,9 @@
         .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
         @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
 
-        /* V1.0.6 經文連結樣式 */
+        /* V1.0.6 經文連結與燈箱樣式 */
         .script-link { color: #2980b9; text-decoration: underline; cursor: pointer; font-weight: bold; }
         .script-link:hover { color: #d32f2f; }
-        
         #script-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; display: flex; align-items: center; justify-content: center; }
         .script-box { width: 90%; height: 85%; background: white; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .script-toolbar { padding: 10px; background: #f1f1f1; display: flex; gap: 8px; border-bottom: 1px solid #ccc; align-items: center; }
@@ -79,7 +78,7 @@
         </div>
         
         <div class="fab-container">
-            <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38(1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
+            <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
             <div id="fab-menu" class="fab-menu" style="display:none; flex-direction:column; gap:6px;">
                 <button onclick="simulateWheel(-1)">+</button>
                 <button onclick="simulateWheel(1)">-</button>
@@ -118,7 +117,7 @@
 </div>
 
 <script>
-    // V1.0.6 狀態記憶與對照表
+    // V1.0.6.1 統一對照表變數名
     let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13, fullText = '';
     let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
     let lastPortraitHeight = "33.33dvh"; 
@@ -134,10 +133,10 @@
         "詩": { std: "ps", lds: "ot/ps", fhl: "詩" }, "箴": { std: "prov", lds: "ot/prov", fhl: "箴" }, "傳": { std: "eccl", lds: "ot/eccl", fhl: "傳" },
         "歌": { std: "song", lds: "ot/song", fhl: "歌" }, "賽": { std: "isa", lds: "ot/isa", fhl: "賽" }, "耶": { std: "jer", lds: "ot/jer", fhl: "耶" },
         "哀": { std: "lam", lds: "ot/lam", fhl: "哀" }, "結": { std: "ezek", lds: "ot/ezek", fhl: "結" }, "但": { std: "dan", lds: "ot/dan", fhl: "但" },
-        "何": { std: "hos", lds: "ot/hos", fhl: "何" }, "約珥": { std: "joel", lds: "ot/joel", fhl: "珥" }, "阿": { std: "amos", lds: "ot/amos", fhl: "摩" },
+        "何": { std: "hos", lds: "ot/hos", fhl: "何" }, "珥": { std: "joel", lds: "ot/joel", fhl: "珥" }, "摩": { std: "amos", lds: "ot/amos", fhl: "摩" },
         "俄": { std: "obad", lds: "ot/obad", fhl: "俄" }, "拿": { std: "jonah", lds: "ot/jonah", fhl: "拿" }, "彌": { std: "micah", lds: "ot/micah", fhl: "彌" },
         "鴻": { std: "nahum", lds: "ot/nahum", fhl: "鴻" }, "哈": { std: "hab", lds: "ot/hab", fhl: "哈" }, "番": { std: "zeph", lds: "ot/zeph", fhl: "番" },
-        "該": { std: "hag", lds: "ot/hag", fhl: "該" }, "撒迦": { std: "zech", lds: "ot/zech", fhl: "亞" }, "瑪": { std: "mal", lds: "ot/mal", fhl: "瑪" },
+        "該": { std: "hag", lds: "ot/hag", fhl: "該" }, "亞": { std: "zech", lds: "ot/zech", fhl: "亞" }, "瑪": { std: "mal", lds: "ot/mal", fhl: "瑪" },
         "太": { std: "matt", lds: "nt/matt", fhl: "太" }, "可": { std: "mark", lds: "nt/mark", fhl: "可" }, "路": { std: "luke", lds: "nt/luke", fhl: "路" },
         "約": { std: "john", lds: "nt/john", fhl: "約" }, "徒": { std: "acts", lds: "nt/acts", fhl: "徒" }, "羅": { std: "rom", lds: "nt/rom", fhl: "羅" },
         "林前": { std: "1-cor", lds: "nt/1-cor", fhl: "林前" }, "林後": { std: "2-cor", lds: "nt/2-cor", fhl: "林後" }, "加": { std: "gal", lds: "nt/gal", fhl: "加" },
@@ -148,7 +147,7 @@
         "彼後": { std: "2-pet", lds: "nt/2-pet", fhl: "彼後" }, "約一": { std: "1-jn", lds: "nt/1-jn", fhl: "約一" }, "約二": { std: "2-jn", lds: "nt/2-jn", fhl: "約二" },
         "約三": { std: "3-jn", lds: "nt/3-jn", fhl: "約三" }, "猶": { std: "jude", lds: "nt/jude", fhl: "猶" }, "啟": { std: "rev", lds: "nt/rev", fhl: "啟" },
         "腓一": { std: "1-ne", lds: "bofm/1-ne", fhl: null }, "腓二": { std: "2-ne", lds: "bofm/2-ne", fhl: null }, "雅各": { std: "jacob", lds: "bofm/jacob", fhl: null },
-        "以挪": { std: "enos", lds: "bofm/enos", fhl: null }, "雅龍": { std: "jarom", lds: "bofm/jarom", fhl: null }, "奧": { std: "omni", lds: "bofm/omni", fhl: null },
+        "以挪": { std: "enos", lds: "bofm/enos", fhl: null }, "雅隆": { std: "jarom", lds: "bofm/jarom", fhl: null }, "奧": { std: "omni", lds: "bofm/omni", fhl: null },
         "摩爾": { std: "w-of-m", lds: "bofm/w-of-m", fhl: null }, "摩賽": { std: "mosiah", lds: "bofm/mosiah", fhl: null }, "阿爾": { std: "alma", lds: "bofm/alma", fhl: null },
         "希拉": { std: "hel", lds: "bofm/hel", fhl: null }, "腓三": { std: "3-ne", lds: "bofm/3-ne", fhl: null }, "腓四": { std: "4-ne", lds: "bofm/4-ne", fhl: null },
         "摩爾門": { std: "morm", lds: "bofm/morm", fhl: null }, "以帖": { std: "ether", lds: "bofm/ether", fhl: null }, "摩羅": { std: "moro", lds: "bofm/moro", fhl: null },
@@ -226,23 +225,25 @@
 
     function renderTable(data) { const tbody = document.getElementById('table-body'); tbody.innerHTML = ''; data.forEach((item, i) => { const tr = document.createElement('tr'); tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`; tr.onclick = () => selectEvent(i); tbody.appendChild(tr); }); }
     
-    // V1.0.6 手術刀：自動化經文導航
+    // V1.0.6.1 修正：精確的閉包捕捉邏輯
     function updateInfoPanel(item) { 
         document.getElementById('info-area').style.display = 'flex'; 
         document.getElementById('info-title').innerText = item.event; 
         document.getElementById('info-time').innerText = item.time; 
         document.getElementById('info-path').innerText = `地點：${item.loc}`; 
         
-        // 解析經文出處並轉化為連結
+        // 解析經文出處，確保 onclick 內的書名是當前匹配到的區域變數
         const regex = /([\u4e00-\u9fa5]+)\s*(\d+):(\d+)/g;
-        document.getElementById('info-script').innerHTML = item.script.replace(regex, (match, book, chap, sec) => {
-            if (SCRIPT_MAP[book]) return `<span class="script-link" onclick="openScripture('${book}', ${chap}, ${sec})">${match}</span>`;
+        document.getElementById('info-script').innerHTML = item.script.replace(regex, (match, bookName, chap, sec) => {
+            if (SCRIPTURE_MAP[bookName]) {
+                return `<span class="script-link" onclick="openScripture('${bookName}', ${chap}, ${sec})">${match}</span>`;
+            }
             return match;
         });
         document.getElementById('info-note').innerText = item.note; 
     }
 
-    // V1.0.6 新增：多源燈箱函式
+    // V1.0.6.1 燈箱開啟函式
     function openScripture(book, chap, sec) {
         const overlay = document.createElement('div');
         overlay.id = 'script-overlay';
@@ -271,27 +272,28 @@
         iframe.style = "flex:1; border:none; background:white;";
         
         toolbar.appendChild(btnLds);
-        if(SCRIPT_MAP[book].fhl) toolbar.appendChild(btnFhl);
+        // 修正：使用正確的對照表名稱判斷 FHL 支援度
+        if(SCRIPTURE_MAP[book] && SCRIPTURE_MAP[book].fhl) toolbar.appendChild(btnFhl);
         toolbar.appendChild(btnClose);
         box.appendChild(toolbar);
         box.appendChild(iframe);
         overlay.appendChild(box);
         document.body.appendChild(overlay);
         
-        // 預設載入來源
         changeScriptSource('lds', book, chap, sec);
     }
 
     function changeScriptSource(type, book, chap, sec) {
         const viewer = document.getElementById('script-viewer');
-        const entry = SCRIPT_MAP[book];
+        const entry = SCRIPTURE_MAP[book];
+        if(!entry) return;
         document.querySelectorAll('.script-toolbar button').forEach(b => b.classList.remove('active'));
         
         if (type === 'lds') {
-            document.getElementById('btn-lds').classList.add('active');
+            const btn = document.getElementById('btn-lds'); if(btn) btn.classList.add('active');
             viewer.src = `https://www.churchofjesuschrist.org/study/scriptures/${entry.lds}/${chap}?lang=zho&id=p${sec}#p${sec}`;
         } else {
-            document.getElementById('btn-fhl').classList.add('active');
+            const btn = document.getElementById('btn-fhl'); if(btn) btn.classList.add('active');
             viewer.src = `https://bible.fhl.net/new/read.php?chineses=${encodeURIComponent(entry.fhl)}&chap=${chap}&sec=${sec}`;
         }
     }
