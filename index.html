@@ -7,7 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
-        /* 手術刀修正：解耦字體變數 */
         :root { 
             --gold: #c5a059; --dark: #2c3e50; --brown: #5d4037; --ink-blue: rgba(50, 75, 95, 0.6); --handle-bg: #ddd; 
             --base-fs: 14px; 
@@ -28,7 +27,7 @@
 
         .marker { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
         .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; z-index: 1; }
-        /* 手術刀修正：標籤使用獨立變數 */
+        /* 手術刀修正：標籤字體連結變數，達成解耦基礎 */
         .marker .label { margin-top: -12.5px; opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: var(--marker-fs); color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none; z-index: 2; }
         .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; }
         .marker.highlight { z-index: 1000 !important; }
@@ -45,7 +44,6 @@
 
         .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
         .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        /* 手術刀修正：FAB 按鈕樣式保持一致 */
         .fab-menu button { width: auto; min-width: 45px; height: 34px; padding: 0 8px; border-radius: 10px; border: 2px solid var(--brown); background: rgba(255,255,255,0.8); cursor: pointer; font-size: 12px; font-weight: bold; }
 
         #scripture-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 3000; background: rgba(0,0,0,0.5); }
@@ -65,10 +63,10 @@
             <button class="fab-main" onclick="toggleFab()">⚙️</button>
             <div id="fab-menu" style="display:none; flex-direction:column; gap:6px;">
                 <button onclick="resetView()">重置地圖</button>
-                <button onclick="adjustMarkerSize(1)">標籤 +</button>
-                <button onclick="adjustMarkerSize(-1)">標籤 -</button>
-                <button onclick="adjustListSize(1)">內容 +</button>
-                <button onclick="adjustListSize(-1)">內容 -</button>
+                <button onclick="adjustFontSize(1)">標籤 +</button>
+                <button onclick="adjustFontSize(-1)">標籤 -</button>
+                <button onclick="adjustFontSize(1)">內容 +</button>
+                <button onclick="adjustFontSize(-1)">內容 -</button>
             </div>
         </div>
         <div id="panzoom-element">
@@ -106,22 +104,24 @@
 
 <script>
     const SCRIPTURE_PHYSICAL_MAP = { 
-        "創": "ot/gen", "出": "ot/ex", "利": "ot/lev", "民": "ot/num", "申": "ot/deut", "書": "ot/josh", "士": "ot/judg", "得": "ot/ruth", "撒上": "ot/1-sam", "撒下": "ot/2-sam", "王上": "ot/1-kgs", "王下": "ot/2-kgs", "代上": "ot/1-chr", "代下": "ot/2-chr", "拉": "ot/ezra", "尼": "ot/neh", "斯": "ot/esth", "伯": "ot/job", "詩": "ot/ps", "箴": "ot/prov", "傳": "ot/eccl", "歌": "ot/ss", "賽": "ot/isa", "耶": "ot/jer", "哀": "ot/lam", "結": "ot/ezek", "但": "ot/dan", "單": "ot/dan", "何": "ot/hos", "珥": "ot/joel", "摩": "ot/amos", "俄": "ot/obad", "拿": "ot/jonah", "彌": "ot/micah", "鴻": "ot/nahum", "哈": "ot/hab", "番": "ot/zeph", "該": "ot/hag", "亞": "ot/zech", "瑪": "ot/mal", 
+        "創": "ot/gen", "出": "ot/ex", "利": "ot/lev", "民": "ot/num", "申": "ot/deut", "書": "ot/josh", "士": "ot/judg", "得": "ot/ruth", "撒上": "ot/1-sam", "撒下": "ot/2-sam", "王上": "ot/1-kgs", "王下": "ot/2-kgs", "代上": "ot/1-chr", "代下": "ot/2-chr", "拉": "ot/ezra", "尼": "ot/neh", "斯": "ot/esth", "伯": "ot/job", "詩": "ot/ps", "箴": "ot/prov", "傳": "ot/eccl", "歌": "ot/ss", "賽": "ot/isa", "耶": "ot/jer", "哀": "ot/lam", "結": "ot/ezek", "單": "ot/dan", "但": "ot/dan", "何": "ot/hos", "珥": "ot/joel", "摩": "ot/amos", "俄": "ot/obad", "拿": "ot/jonah", "彌": "ot/micah", "鴻": "ot/nahum", "哈": "ot/hab", "番": "ot/zeph", "該": "ot/hag", "亞": "ot/zech", "瑪": "ot/mal", 
         "太": "nt/matt", "可": "nt/mark", "路": "nt/luke", "約": "nt/john", "徒": "nt/acts", "羅": "nt/rom", "林前": "nt/1-cor", "林後": "nt/2-cor", "加": "nt/gal", "弗": "nt/eph", "腓": "nt/phil", "西": "nt/col", "帖前": "nt/1-thes", "帖後": "nt/2-thes", "提前": "nt/1-tim", "提後": "nt/2-tim", "多": "nt/titus", "門": "nt/philem", "來": "nt/heb", "雅": "nt/james", "彼前": "nt/1-pet", "彼後": "nt/2-pet", "約一": "nt/1-jn", "約二": "nt/2-jn", "約三": "nt/3-jn", "猶": "nt/jude", "啟": "nt/rev"
     };
 
     let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13, baseListFontSize = 14;
     let lastPortraitHeight = "33.33dvh", lastLandscapeWidth = "33.33%";
 
-    // 手術刀修正：字體控制解耦
-    function adjustMarkerSize(delta) { 
-        baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); 
-        document.documentElement.style.setProperty('--marker-fs', baseMarkerFontSize + 'px'); 
-        applyMarkerStyles(); 
-    }
-    function adjustListSize(delta) { 
-        baseListFontSize = Math.max(8, Math.min(30, baseListFontSize + delta)); 
-        document.documentElement.style.setProperty('--base-fs', baseListFontSize + 'px'); 
+    // 手術刀修正：邏輯層分流，斷開標籤與內容的連動
+    function adjustFontSize(delta) { 
+        const btnText = window.event.target.innerText;
+        if (btnText.includes('標籤')) {
+            baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); 
+            document.documentElement.style.setProperty('--marker-fs', baseMarkerFontSize + 'px'); 
+            applyMarkerStyles(); 
+        } else {
+            baseListFontSize = Math.max(8, Math.min(30, baseListFontSize + delta)); 
+            document.documentElement.style.setProperty('--base-fs', baseListFontSize + 'px'); 
+        }
     }
 
     function openScripture(bookKey, chap, sec, endSec) {
@@ -142,10 +142,10 @@
         document.getElementById('info-time').innerText = item.time;
         document.getElementById('info-path').innerText = `地點：${item.loc}`;
         
-        // 手術刀修正：Regex 加入排序與全形空格支援
+        // 手術刀修正：Regex 加入長度降序排序與全形空格支持
         const sortedBooks = Object.keys(SCRIPTURE_PHYSICAL_MAP).sort((a,b) => b.length - a.length).join('|');
         const regex = new RegExp(`(${sortedBooks})[\\s\\u3000]*(\\d+)(?::(\\d+)(?:-(\\d+))?)?`, 'g');
-        const wrap = (m, b, c, s, e) => `<span class=\"script-link\" onclick=\"openScripture('${b}','${c}','${s||""}','${e||""}')\">${m}</span>`;
+        const wrap = (m, b, c, s, e) => `<span class="script-link" onclick="openScripture('${b}','${c}','${s||""}','${e||""}')">${m}</span>`;
         
         document.getElementById('info-script').innerHTML = (item.script || "").replace(regex, wrap);
         document.getElementById('info-note').innerHTML = (item.note || "").replace(regex, wrap);
@@ -209,7 +209,7 @@
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
         const res = await fetch(`folder.csv?t=${Date.now()}`); const folders = parseCSV(await res.text()).slice(1);
-        const select = document.getElementById('folder-select'); select.innerHTML = '<option value=\"\">-- 請選擇史地章節 --</option>';
+        const select = document.getElementById('folder-select'); select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
         folders.forEach(f => { if(f[0]) { const opt = document.createElement('option'); opt.value = f[0]; opt.innerText = f[1] || f[0]; select.appendChild(opt); } });
         const last = localStorage.getItem('lastBibleFolder'); if (last) { select.value = last; loadProject(last); }
         initResizers();
