@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.1.2a</title>
+    <title>聖經史地互動地圖 V1.1.2b</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
-        /* 手術刀修正：解耦字體變數 */
+        /* 手術刀修正：字體變數解耦 */
         :root { 
             --gold: #c5a059; --dark: #2c3e50; --brown: #5d4037; --ink-blue: rgba(50, 75, 95, 0.6); --handle-bg: #ddd; 
-            --base-fs: 14px;    /* 側邊欄與表格字體 */
-            --marker-fs: 13px;  /* 地圖標籤專用字體 */
+            --base-fs: 14px; 
+            --marker-fs: 13px; /* 地圖標籤專用字體變數 */
         }
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium", sans-serif; }
@@ -28,7 +28,7 @@
 
         .marker { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
         .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; z-index: 1; }
-        /* 手術刀修正：標籤使用獨立變數 --marker-fs */
+        /* 手術刀修正：使用獨立字體變數 */
         .marker .label { margin-top: -12.5px; opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: var(--marker-fs); color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none; z-index: 2; }
         .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; }
         .marker.highlight { z-index: 1000 !important; }
@@ -45,6 +45,7 @@
 
         .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
         .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        /* 手術刀修正：更新按鈕呼叫的函數名稱 */
         .fab-menu button { width: auto; min-width: 45px; height: 34px; padding: 0 8px; border-radius: 10px; border: 2px solid var(--brown); background: rgba(255,255,255,0.8); cursor: pointer; font-size: 12px; font-weight: bold; }
 
         #scripture-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 3000; background: rgba(0,0,0,0.5); }
@@ -112,7 +113,7 @@
     let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13, baseListFontSize = 14;
     let lastPortraitHeight = "33.33dvh", lastLandscapeWidth = "33.33%";
 
-    // 手術刀修正：字體解耦函數
+    // 手術刀修正：字體調整邏輯解耦
     function adjustMarkerSize(delta) { 
         baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); 
         document.documentElement.style.setProperty('--marker-fs', baseMarkerFontSize + 'px'); 
@@ -141,7 +142,7 @@
         document.getElementById('info-time').innerText = item.time;
         document.getElementById('info-path').innerText = `地點：${item.loc}`;
         
-        // 手術刀修正：精確正則表達式，支援長詞優先與所有空格形式
+        // 手術刀修正：Regex 強化，加入長度排序與全形空格支援
         const sortedBooks = Object.keys(SCRIPTURE_PHYSICAL_MAP).sort((a,b) => b.length - a.length).join('|');
         const regex = new RegExp(`(${sortedBooks})[\\s\\u3000]*(\\d+)(?::(\\d+)(?:-(\\d+))?)?`, 'g');
         const wrap = (m, b, c, s, e) => `<span class="script-link" onclick="openScripture('${b}','${c}','${s||""}','${e||""}')">${m}</span>`;
@@ -150,7 +151,6 @@
         document.getElementById('info-note').innerHTML = (item.note || "").replace(regex, wrap);
     }
 
-    // 保留 1.1.1 完整功能邏輯
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
     function applyMarkerStyles() {
@@ -174,7 +174,28 @@
     function toggleInfo(){const b=document.getElementById('info-body'),a=document.getElementById('info-arrow');const isH=b.style.display==='none';b.style.display=isH?'block':'none';a.innerText=isH?'▼':'▲';document.getElementById('info-area').style.flex=isH?'0 0 45%':'0 0 44px'}
     function navEvent(s){const n=currentEventIdx+s;if(n>=0&&n<filteredData.length)selectEvent(n)}
 
-    window.onload=async()=>{
+    function initResizers() {
+        const resMain=document.getElementById('resizer-main'), side=document.getElementById('side-panel'), resInner=document.getElementById('resizer-inner');
+        resMain.onmousedown=resMain.ontouchstart=(e)=>{
+            document.onmousemove=document.ontouchmove=(ev)=>{
+                const x=ev.clientX||ev.touches[0].clientX;
+                const w=window.innerWidth-x; side.style.width=w+'px'; side.style.flex='none';
+                if(window.innerWidth >= window.innerHeight) lastLandscapeWidth = w+'px';
+                syncOverlay(); updateMinScale();
+            };
+            document.onmouseup=document.ontouchend=()=>{document.onmousemove=null};
+        };
+        resInner.onmousedown=resInner.ontouchstart=(e)=>{
+            document.onmousemove=document.ontouchmove=(ev)=>{
+                const y=ev.clientY||ev.touches[0].clientY;
+                const h=window.innerHeight-y; side.style.height=h+'px'; side.style.flex=`0 0 ${h}px`;
+                if(window.innerWidth < window.innerHeight) lastPortraitHeight = h+'px';
+            };
+            document.onmouseup=document.ontouchend=()=>{document.onmousemove=null};
+        };
+    }
+
+    window.onload = async () => {
         const el = document.getElementById('panzoom-element'); pz = Panzoom(el, { maxScale: 8, contain: 'outside', animate: true });
         window.addEventListener('resize', () => { 
             const side = document.getElementById('side-panel');
@@ -187,30 +208,11 @@
         });
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
-        const res = await fetch(`folder.csv?t=${Date.now()}`); const f = parseCSV(await res.text()).slice(1);
-        const s = document.getElementById('folder-select'); f.forEach(i=>{ if(i[0]){const o=document.createElement('option');o.value=i[0];o.innerText=i[1]||i[0];s.appendChild(o)}});
-        const last = localStorage.getItem('lastBibleFolder'); if(last){s.value=last;loadProject(last)}
-        
-        // Resizer 邏輯
-        const resMain=document.getElementById('resizer-main'),side=document.getElementById('side-panel');
-        resMain.onmousedown=resMain.ontouchstart=(e)=>{
-            document.onmousemove=document.ontouchmove=(ev)=>{
-                const x=ev.clientX||ev.touches[0].clientX;
-                const w=window.innerWidth-x; side.style.width=w+'px'; side.style.flex='none';
-                if(window.innerWidth >= window.innerHeight) lastLandscapeWidth = w+'px';
-                syncOverlay(); updateMinScale();
-            };
-            document.onmouseup=document.ontouchend=()=>{document.onmousemove=null};
-        };
-        const resInner=document.getElementById('resizer-inner');
-        resInner.onmousedown=resInner.ontouchstart=(e)=>{
-            document.onmousemove=document.ontouchmove=(ev)=>{
-                const y=ev.clientY||ev.touches[0].clientY;
-                const h=window.innerHeight-y; side.style.height=h+'px'; side.style.flex=`0 0 ${h}px`;
-                if(window.innerWidth < window.innerHeight) lastPortraitHeight = h+'px';
-            };
-            document.onmouseup=document.ontouchend=()=>{document.onmousemove=null};
-        };
+        const res = await fetch(`folder.csv?t=${Date.now()}`); const folders = parseCSV(await res.text()).slice(1);
+        const select = document.getElementById('folder-select'); select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
+        folders.forEach(f => { if(f[0]) { const opt = document.createElement('option'); opt.value = f[0]; opt.innerText = f[1] || f[0]; select.appendChild(opt); } });
+        const last = localStorage.getItem('lastBibleFolder'); if (last) { select.value = last; loadProject(last); }
+        initResizers();
     };
 </script>
 </body>
