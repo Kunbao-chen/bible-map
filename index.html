@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.0.9</title>
+    <title>聖經史地互動地圖 V1.1.1</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -125,11 +125,24 @@
 </div>
 
 <script>
-    const SCRIPTURE_PHYSICAL_MAP = { "創": "ot/gen", "出": "ot/ex", "利": "ot/lev", "民": "ot/num", "申": "ot/deut", "書": "ot/josh", "士": "ot/judg", "得": "ot/ruth", "撒上": "ot/1-sam", "撒下": "ot/2-sam", "王上": "ot/1-kgs", "王下": "ot/2-kgs", "代上": "ot/1-chr", "代下": "ot/2-chr", "拉": "ot/ezra", "尼": "ot/neh", "斯": "ot/esth", "伯": "ot/job", "詩": "ot/ps", "箴": "ot/prov", "傳": "ot/eccl", "歌": "ot/ss", "賽": "ot/isa", "耶": "ot/jer", "哀": "ot/lam", "結": "ot/ezek", "但": "ot/dan", "何": "ot/hos", "珥": "ot/joel", "摩": "ot/amos", "俄": "ot/obad", "拿": "ot/jonah", "彌": "ot/micah", "鴻": "ot/nahum", "哈": "ot/hab", "番": "ot/zeph", "該": "ot/hag", "亞": "ot/zech", "瑪": "ot/mal", "太": "nt/matt", "可": "nt/mark", "路": "nt/luke", "約": "nt/john", "徒": "nt/acts", "羅": "nt/rom", "林前": "nt/1-cor", "林後": "nt/2-cor", "加": "nt/gal", "弗": "nt/eph", "腓": "nt/phil", "西": "nt/col", "帖前": "nt/1-thes", "帖後": "nt/2-thes", "提前": "nt/1-tim", "提後": "nt/2-tim", "多": "nt/titus", "門": "nt/philem", "來": "nt/heb", "雅": "nt/james", "彼前": "nt/1-pet", "彼後": "nt/2-pet", "約一": "nt/1-jn", "約二": "nt/2-jn", "約三": "nt/3-jn", "猶": "nt/jude", "啟": "nt/rev", "罕": "pgp/abr", "摩西": "pgp/moses", "約太": "pgp/js-m", "約史": "pgp/js-h", "信": "pgp/a-of-f", "腓一": "bofm/1-ne", "腓二": "bofm/2-ne", "各": "bofm/jacob", "挪": "bofm/enos", "龍": "bofm/jarom", "奧": "bofm/omni", "語": "bofm/w-of-m", "摩賽": "bofm/mosiah", "阿": "bofm/alma", "曼": "bofm/hel", "腓三": "bofm/3-ne", "腓四": "bofm/4-ne", "摩爾門": "bofm/morm", "以": "bofm/ether", "乃": "bofm/moro" };
+    // V1.1.1 全量補齊對應表
+    const SCRIPTURE_PHYSICAL_MAP = { 
+        "創": "ot/gen", "出": "ot/ex", "利": "ot/lev", "民": "ot/num", "申": "ot/deut", "書": "ot/josh", "士": "ot/judg", "得": "ot/ruth", "撒上": "ot/1-sam", "撒下": "ot/2-sam", "王上": "ot/1-kgs", "王下": "ot/2-kgs", "代上": "ot/1-chr", "代下": "ot/2-chr", "拉": "ot/ezra", "尼": "ot/neh", "斯": "ot/esth", "伯": "ot/job", "詩": "ot/ps", "箴": "ot/prov", "傳": "ot/eccl", "歌": "ot/ss", "賽": "ot/isa", "耶": "ot/jer", "哀": "ot/lam", "結": "ot/ezek", "但": "ot/dan", "單": "ot/dan", "何": "ot/hos", "珥": "ot/joel", "摩": "ot/amos", "俄": "ot/obad", "拿": "ot/jonah", "彌": "ot/micah", "鴻": "ot/nahum", "哈": "ot/hab", "番": "ot/zeph", "該": "ot/hag", "亞": "ot/zech", "瑪": "mal", 
+        "太": "nt/matt", "可": "nt/mark", "路": "nt/luke", "約": "nt/john", "徒": "nt/acts", "羅": "nt/rom", "林前": "nt/1-cor", "林後": "nt/2-cor", "加": "nt/gal", "弗": "nt/eph", "腓": "nt/phil", "西": "nt/col", "帖前": "nt/1-thes", "帖後": "nt/2-thes", "提前": "nt/1-tim", "提後": "nt/2-tim", "多": "nt/titus", "門": "nt/philem", "來": "nt/heb", "雅": "nt/james", "彼前": "nt/1-pet", "彼後": "nt/2-pet", "約一": "nt/1-jn", "約二": "nt/2-jn", "約三": "nt/3-jn", "猶": "nt/jude", "啟": "nt/rev", 
+        "教約": "dc-testament/dc", "罕": "pgp/abr", "摩西": "pgp/moses", "約太": "pgp/js-m", "約史": "pgp/js-h", "信": "pgp/a-of-f",
+        "腓一": "bofm/1-ne", "腓二": "bofm/2-ne", "各": "bofm/jacob", "挪": "bofm/enos", "龍": "bofm/jarom", "奧": "bofm/omni", "語": "bofm/w-of-m", "摩賽": "bofm/mosiah", "阿": "bofm/alma", "曼": "bofm/hel", "腓三": "bofm/3-ne", "腓四": "bofm/4-ne", "摩爾門": "bofm/morm", "以": "bofm/ether", "乃": "bofm/moro" 
+    };
+
+    // V1.1.1 增加備援連結邏輯
     function openScripture(bookKey, chap, sec, endSec) {
-        const path = SCRIPTURE_PHYSICAL_MAP[bookKey]; if (!path) return;
-        let url = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho`;
-        if (sec) url += `&id=${endSec ? 'p'+sec+'-p'+endSec : 'p'+sec}#p${sec}`;
+        const path = SCRIPTURE_PHYSICAL_MAP[bookKey];
+        let url = "";
+        if (path) {
+            url = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho`;
+            if (sec) url += `&id=${endSec ? 'p'+sec+'-p'+endSec : 'p'+sec}#p${sec}`;
+        } else {
+            url = `https://bible.fhl.net/new/read.php?chineses=${encodeURIComponent(bookKey)}&chap=${chap}`;
+        }
         document.getElementById('scripture-frame').src = url;
         document.getElementById('scripture-modal').style.display = 'block';
         document.getElementById('modal-title').innerText = `${bookKey} 第 ${chap} 章`;
@@ -215,7 +228,7 @@
 
     function renderTable(data) { const tbody = document.getElementById('table-body'); tbody.innerHTML = ''; data.forEach((item, i) => { const tr = document.createElement('tr'); tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`; tr.onclick = () => selectEvent(i); tbody.appendChild(tr); }); }
     
-    // V1.0.9 手術刀升級：整合第七欄自動連結化並移除標籤/虛線
+    // V1.1.1 手術刀精確優化解析
     function updateInfoPanel(item) { 
         if(!item) return;
         document.getElementById('info-area').style.display = 'flex'; 
@@ -227,18 +240,18 @@
         const scriptRaw = item.script || "";
         const ldsLinkRaw = item.ldsLink || ""; 
 
+        // 依長度排序確保長詞優先匹配 (如「教約」先於「約」)
         const sortedBooks = Object.keys(SCRIPTURE_PHYSICAL_MAP).sort((a, b) => b.length - a.length).join('|');
-        const regex = new RegExp(`(${sortedBooks})[^\\s\\d]*\\s*(\\d+)(?::(\\d+)(?:-(\\d+))?)?`, 'g');
+        // V1.1.1 修正正則：強化邊界定位，限制書名後必接數字，排除括號文字
+        const regex = new RegExp(`(${sortedBooks})\\s*(\\d+)(?::(\\d+)(?:-(\\d+))?)?`, 'g');
         
-        // 處理主要經文與第七欄內容的連結化
         const wrapLink = (m, b, c, s, e) => `<span class="script-link" onclick="openScripture('${b}', ${c}, '${s||""}', '${e||""}')">${m}</span>`;
         scriptEl.innerHTML = scriptRaw.replace(regex, wrapLink);
 
         const linkedLdsContent = ldsLinkRaw.replace(regex, wrapLink);
         
-        // 移除「正典關聯」標籤與虛線，直接將連結化後的內容注入 note 區塊下方
         document.getElementById('info-note').innerHTML = `<div>${item.note || ""}</div>` + 
-            (ldsLinkRaw ? `<div style="margin-top:10px;">${linkedLdsContent}</div>` : "");
+            (ldsLinkRaw ? `<div style="margin-top:10px; border-top:1px dashed #eee; padding-top:10px;">${linkedLdsContent}</div>` : "");
     }
 
     function toggleInfo() { const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), area = document.getElementById('info-area'); if (body.style.display === 'none') { body.style.display = 'block'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; } else { body.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; } }
