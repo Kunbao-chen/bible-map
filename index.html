@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.0.5</title>
+    <title>聖經史地互動地圖 V1.0.6</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -106,24 +106,25 @@
 </div>
 
 <script>
-    // V1.0.5 核心定義
-    const SCRIPTURE_MAP = {
+    /* --- V1.0.6 手術刀植入：經文對照與跳轉邏輯 --- */
+    const SCRIPTURE_PHYSICAL_MAP = {
+        "創": "ot/gen", "出": "ot/ex", "利": "ot/lev", "民": "ot/num", "申": "ot/deut", "書": "ot/josh", "士": "ot/judg", "得": "ot/ruth", "撒上": "ot/1-sam", "撒下": "ot/2-sam", "王上": "ot/1-kgs", "王下": "ot/2-kgs", "代上": "ot/1-chr", "代下": "ot/2-chr", "拉": "ot/ezra", "尼": "ot/neh", "斯": "ot/esth", "伯": "ot/job", "詩": "ot/ps", "箴": "ot/prov", "傳": "ot/eccl", "歌": "ot/ss", "賽": "ot/isa", "耶": "ot/jer", "哀": "ot/lam", "結": "ot/ezek", "但": "ot/dan", "何": "ot/hos", "珥": "ot/joel", "摩": "ot/amos", "俄": "ot/obad", "拿": "ot/jonah", "彌": "ot/micah", "鴻": "ot/nahum", "哈": "ot/hab", "番": "ot/zeph", "該": "ot/hag", "亞": "ot/zech", "瑪": "ot/mal",
+        "太": "nt/matt", "可": "nt/mark", "路": "nt/luke", "約": "nt/john", "徒": "nt/acts", "羅": "nt/rom", "林前": "nt/1-cor", "林後": "nt/2-cor", "加": "nt/gal", "弗": "nt/eph", "腓": "nt/phil", "西": "nt/col", "帖前": "nt/1-thes", "帖後": "nt/2-thes", "提前": "nt/1-tim", "提後": "nt/2-tim", "多": "nt/titus", "門": "nt/philem", "來": "nt/heb", "雅": "nt/james", "彼前": "nt/1-pet", "彼後": "nt/2-pet", "約一": "nt/1-jn", "約二": "nt/2-jn", "約三": "nt/3-jn", "猶": "nt/jude", "啟": "nt/rev",
         "罕": "pgp/abr", "摩西": "pgp/moses", "約太": "pgp/js-m", "約史": "pgp/js-h", "信": "pgp/a-of-f",
-        "腓一": "bofm/1-ne", "腓二": "bofm/2-ne", "各": "bofm/jacob", "挪": "bofm/enos", "龍": "bofm/jarom",
-        "奧": "bofm/omni", "語": "bofm/w-of-m", "摩賽": "bofm/mosiah", "阿": "bofm/alma", "曼": "bofm/hel",
-        "腓三": "bofm/3-ne", "腓四": "bofm/4-ne", "摩爾門": "bofm/morm", "以": "bofm/ether", "乃": "bofm/moro",
-        "創": "ot/gen", "出": "ot/ex", "利": "ot/lev", "民": "ot/num", "申": "ot/deut", "書": "ot/josh", "士": "ot/judg",
-        "得": "ot/ruth", "撒上": "ot/1-sam", "撒下": "ot/2-sam", "王上": "ot/1-kgs", "王下": "ot/2-kgs",
-        "代上": "ot/1-chr", "代下": "ot/2-chr", "拉": "ot/ezra", "尼": "ot/neh", "斯": "ot/esth", "伯": "ot/job",
-        "詩": "ot/ps", "箴": "ot/prov", "傳": "ot/eccl", "歌": "ot/ss", "賽": "ot/isa", "耶": "ot/jer", "哀": "ot/lam",
-        "結": "ot/ezek", "但": "ot/dan", "何": "ot/hos", "珥": "ot/joel", "摩": "ot/amos", "俄": "ot/obad", "拿": "ot/jonah",
-        "彌": "ot/micah", "鴻": "ot/nahum", "哈": "ot/hab", "番": "ot/zeph", "該": "ot/hag", "亞": "ot/zech", "瑪": "ot/mal",
-        "太": "nt/matt", "可": "nt/mark", "路": "nt/luke", "約": "nt/john", "徒": "nt/acts", "羅": "nt/rom",
-        "林前": "nt/1-cor", "林後": "nt/2-cor", "加": "nt/gal", "弗": "nt/eph", "腓": "nt/phil", "西": "nt/col",
-        "帖前": "nt/1-thes", "帖後": "nt/2-thes", "提前": "nt/1-tim", "提後": "nt/2-tim", "多": "nt/titus",
-        "門": "nt/philem", "來": "nt/heb", "雅": "nt/james", "彼前": "nt/1-pet", "彼後": "nt/2-pet", "約一": "nt/1-jn",
-        "約二": "nt/2-jn", "約三": "nt/3-jn", "猶": "nt/jude", "啟": "nt/rev"
+        "腓一": "bofm/1-ne", "腓二": "bofm/2-ne", "各": "bofm/jacob", "挪": "bofm/enos", "龍": "bofm/jarom", "奧": "bofm/omni", "語": "bofm/w-of-m", "摩賽": "bofm/mosiah", "阿": "bofm/alma", "曼": "bofm/hel", "腓三": "bofm/3-ne", "腓四": "bofm/4-ne", "摩爾門": "bofm/morm", "以": "bofm/ether", "乃": "bofm/moro"
     };
+
+    function openScripture(bookKey, chap, sec, endSec) {
+        const path = SCRIPTURE_PHYSICAL_MAP[bookKey];
+        if (!path) return;
+        let url = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho`;
+        if (sec) {
+            // 多節螢光反白邏輯：id=p1-p5 且錨點指向第一節 #p1
+            const idParam = endSec ? `p${sec}-p${endSec}` : `p${sec}`;
+            url += `&id=${idParam}#p${sec}`;
+        }
+        window.open(url, '_blank');
+    }
 
     let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
     let lastPortraitHeight = "33.33dvh", lastLandscapeWidth = "33.33%";
@@ -135,23 +136,21 @@
         document.getElementById('info-time').innerText = item.time || "";
         document.getElementById('info-path').innerText = `地點：${item.loc || ""}`;
         
+        /* --- V1.0.6 手術刀植入：全名辨識、多節偵測與官網連結 --- */
         const scriptEl = document.getElementById('info-script');
         const scriptRaw = item.script || "";
-        const regex = /([^\s\d]+)\s*(\d+)(?::(\d+)(?:-(\d+))?)?/g;
-        scriptEl.innerHTML = scriptRaw.replace(regex, (match, book, chap, sec) => {
-            if (SCRIPTURE_MAP[book]) {
-                const s = sec || 1;
-                return `<span class="script-link" onclick="openScripture('${book}', ${chap}, ${s})">${match}</span>`;
-            }
-            return match;
-        });
-        document.getElementById('info-note').innerText = item.note || "";
-    }
+        
+        // 1. 動態建立正則：支援 (簡寫)[全名剩餘字]* (章) : (起節) - (終節)
+        const sortedBooks = Object.keys(SCRIPTURE_PHYSICAL_MAP).sort((a, b) => b.length - a.length).join('|');
+        const regex = new RegExp(`(${sortedBooks})[^\\s\\d]*\\s*(\\d+)(?::(\\d+)(?:-(\\d+))?)?`, 'g');
 
-    function openScripture(bookKey, chap, sec) {
-        const path = SCRIPTURE_MAP[bookKey];
-        const url = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho&id=p${sec}#p${sec}`;
-        window.open(url, '_blank');
+        scriptEl.innerHTML = scriptRaw.replace(regex, (match, book, chap, sec, endSec) => {
+            return `<span class="script-link" onclick="openScripture('${book}', ${chap}, '${sec||""}', '${endSec||""}')">${match}</span>`;
+        });
+
+        // 2. 合併顯示「備註」與「正典關聯 (ldsLink)」
+        document.getElementById('info-note').innerHTML = `<div>${item.note || ""}</div>` + 
+            (item.ldsLink ? `<div style="margin-top:10px; padding-top:10px; border-top:1.5px dashed #ccc; color:var(--brown); font-size:0.95em;"><strong>正典關聯：</strong><br>${item.ldsLink}</div>` : "");
     }
 
     function toggleSearch() { const input = document.getElementById('search-input'); input.classList.toggle('open'); if(input.classList.contains('open')) input.focus(); }
@@ -212,7 +211,6 @@
         refreshCollision();
     }
 
-    // V1.0.5 核心還原：標籤碰撞排序（由小到大處理，大地名最後畫）
     function refreshCollision() {
         const markers = Array.from(document.querySelectorAll('.marker:not(.highlight)'));
         const occupied = [];
@@ -260,7 +258,11 @@
 
     async function loadProject(f) {
         if (!f) return; currentFolder = f; localStorage.setItem('lastBibleFolder', f); allCoords = [];
-        const dRes = await fetch(`${f}/data.csv?t=${Date.now()}`); eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => ({ id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] }));
+        const dRes = await fetch(`${f}/data.csv?t=${Date.now()}`); 
+        /* --- V1.0.6 手術刀植入：讀取第七欄 (ldsLink) --- */
+        eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => ({ 
+            id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5], ldsLink:r[6] 
+        }));
         filteredData = [...eventData]; renderTable(filteredData);
         for (let x = 1; x <= 15; x++) { try { const cRes = await fetch(`${f}/coords-${x}.csv?t=${Date.now()}`); if (!cRes.ok) break; parseCSV(await cRes.text()).slice(1).forEach(r => { if(r[1] && r[5]) allCoords.push({ n: r[1].trim(), x: r[5], y: r[6], mapIdx: x, size: parseInt(r[7])||0 }); }); } catch(e) { break; } }
         if(filteredData.length) selectEvent(0);
@@ -287,7 +289,6 @@
         const el = document.getElementById('panzoom-element');
         pz = Panzoom(el, { maxScale: 8, contain: 'outside', animate: true });
         
-        // V1.0.5 旋轉還原邏輯
         window.addEventListener('resize', () => { 
             const side = document.getElementById('side-panel');
             if (window.innerWidth < window.innerHeight) {
