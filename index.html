@@ -26,6 +26,7 @@
         .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; z-index: 1; }
         .marker .label { margin-top: -12.5px; opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none; z-index: 2; }
         
+        /* 區域標籤樣式：與 base-fs 連動 */
         .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; }
         
         .marker.highlight { z-index: 1000 !important; }
@@ -56,6 +57,8 @@
         .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
         .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .fab-menu button { width: 34px; height: 34px; border-radius: 10px; border: 2px solid var(--brown); background: rgba(255,255,255,0.8); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--brown); }
+        
+        /* 經文連結樣式 */
         .script-link { color: #2980b9; cursor: pointer; text-decoration: underline; font-weight: bold; }
     </style>
 </head>
@@ -106,7 +109,7 @@
 </div>
 
 <script>
-    /* --- V1.0.7 手術刀植入點：對照表與跳轉函數 --- */
+    /* --- V1.0.7 僅修正點 1: 路徑表與跳轉函數 --- */
     const SCRIPTURE_PHYSICAL_MAP = {
         "創": "ot/gen", "出": "ot/ex", "利": "ot/lev", "民": "ot/num", "申": "ot/deut", "書": "ot/josh", "士": "ot/judg", "得": "ot/ruth", "撒上": "ot/1-sam", "撒下": "ot/2-sam", "王上": "ot/1-kgs", "王下": "ot/2-kgs", "代上": "ot/1-chr", "代下": "ot/2-chr", "拉": "ot/ezra", "尼": "ot/neh", "斯": "ot/esth", "伯": "ot/job", "詩": "ot/ps", "箴": "ot/prov", "傳": "ot/eccl", "歌": "ot/ss", "賽": "ot/isa", "耶": "ot/jer", "哀": "ot/lam", "結": "ot/ezek", "但": "ot/dan", "何": "ot/hos", "珥": "ot/joel", "摩": "ot/amos", "俄": "ot/obad", "拿": "ot/jonah", "彌": "ot/micah", "鴻": "ot/nahum", "哈": "ot/hab", "番": "ot/zeph", "該": "ot/hag", "亞": "ot/zech", "瑪": "ot/mal",
         "太": "nt/matt", "可": "nt/mark", "路": "nt/luke", "約": "nt/john", "徒": "nt/acts", "羅": "nt/rom", "林前": "nt/1-cor", "林後": "nt/2-cor", "加": "nt/gal", "弗": "nt/eph", "腓": "nt/phil", "西": "nt/col", "帖前": "nt/1-thes", "帖後": "nt/2-thes", "提前": "nt/1-tim", "提後": "nt/2-tim", "多": "nt/titus", "門": "nt/philem", "來": "nt/heb", "雅": "nt/james", "彼前": "nt/1-pet", "彼後": "nt/2-pet", "約一": "nt/1-jn", "約二": "nt/2-jn", "約三": "nt/3-jn", "猶": "nt/jude", "啟": "nt/rev",
@@ -122,7 +125,7 @@
             const idParam = endSec ? `p${sec}-p${endSec}` : `p${sec}`;
             url += `&id=${idParam}#p${sec}`;
         }
-        window.open(url, '_blank');
+        window.location.href = url; // 嚴格不另開新頁
     }
 
     let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
@@ -135,7 +138,7 @@
         document.getElementById('info-time').innerText = item.time || "";
         document.getElementById('info-path').innerText = `地點：${item.loc || ""}`;
         
-        /* --- V1.0.7 手術刀植入點：詳情內容動態連結化 --- */
+        /* --- V1.0.7 僅修正點 2: 詳情內容連結化與第七欄顯示 --- */
         const scriptEl = document.getElementById('info-script');
         const scriptRaw = item.script || "";
         const sortedBooks = Object.keys(SCRIPTURE_PHYSICAL_MAP).sort((a, b) => b.length - a.length).join('|');
@@ -146,7 +149,7 @@
         });
 
         document.getElementById('info-note').innerHTML = `<div>${item.note || ""}</div>` + 
-            (item.ldsLink ? `<div style="margin-top:10px; padding-top:10px; border-top:1.5px dashed #ccc; color:var(--brown); font-size:0.95em;"><strong>正典關聯：</strong><br>${item.ldsLink}</div>` : "");
+            (item.ldsLink ? `<div style="margin-top:10px; padding-top:10px; border-top:1.5px dashed #ccc; color:var(--brown);"><strong>正典關聯：</strong><br>${item.ldsLink}</div>` : "");
     }
 
     function toggleSearch() { const input = document.getElementById('search-input'); input.classList.toggle('open'); if(input.classList.contains('open')) input.focus(); }
@@ -209,7 +212,7 @@
     function refreshCollision() {
         const markers = Array.from(document.querySelectorAll('.marker:not(.highlight)'));
         const occupied = [];
-        markers.sort((a,b) => (parseInt(a.dataset.size)||0) - (parseInt(b.dataset.size)||0)).forEach(m => {
+        markers.forEach(m => {
             const lbl = m.querySelector('.label');
             const rect = lbl.getBoundingClientRect();
             let overlap = occupied.some(o => !(rect.right < o.left || rect.left > o.right || rect.bottom < o.top || rect.top > o.bottom));
@@ -254,9 +257,9 @@
     async function loadProject(f) {
         if (!f) return; currentFolder = f; localStorage.setItem('lastBibleFolder', f); allCoords = [];
         const dRes = await fetch(`${f}/data.csv?t=${Date.now()}`); 
-        /* --- V1.0.7 手術刀植入點：讀取第七欄並確保 Tab 相容 --- */
+        /* --- V1.0.7 僅修正點 3: 讀取第七欄資料 --- */
         eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => ({ 
-            id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4]||"", note:r[5]||"", ldsLink:r[6]||"" 
+            id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5], ldsLink: r[6] || ""
         }));
         filteredData = [...eventData]; renderTable(filteredData);
         for (let x = 1; x <= 15; x++) { try { const cRes = await fetch(`${f}/coords-${x}.csv?t=${Date.now()}`); if (!cRes.ok) break; parseCSV(await cRes.text()).slice(1).forEach(r => { if(r[1] && r[5]) allCoords.push({ n: r[1].trim(), x: r[5], y: r[6], mapIdx: x, size: parseInt(r[7])||0 }); }); } catch(e) { break; } }
@@ -266,7 +269,10 @@
     function findBestMatch(t, db) { let b = null, m = Infinity; for (const i of db) { if (i.n === t) return i; if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } } } return b; }
     function parseLocationLogic(l, db) { const res = { paths: [], points: [] }; l.split('+').forEach(b => { if (b.includes('→')) { const c = b.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p); if (c.length > 1) res.paths.push(c); c.forEach(p => res.points.push(p)); } else { const pt = findBestMatch(b.replace(/\(.*?\)/g, '').trim(), db); if (pt) res.points.push(pt); } }); return res; }
     function applyMarkerStyles() { const s = pz ? pz.getScale() : 1; document.querySelectorAll('.marker').forEach(m => { m.style.transform = `translate(-50%, -50%) scale(${1/s})`; }); }
+    
+    // A+/A- 與 --base-fs 連動邏輯 (V1.0.5 原封不動)
     function adjustFontSize(d) { baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + d)); document.documentElement.style.setProperty('--base-fs', baseMarkerFontSize + 'px'); refreshCollision(); }
+    
     function flyTo(pts) { 
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section'); if (!img.offsetWidth) return;
         const cR = c.getBoundingClientRect(), iR = img.getBoundingClientRect(), sc = pz.getScale(), pan = pz.getPan();
@@ -274,14 +280,20 @@
         const mx = (iR.left - cR.left) + (iR.width * (ax / 100)), my = (iR.top - cR.top) + (iR.height * (ay / 100));
         pz.pan(pan.x + (((cR.width/2)-mx)/sc), pan.y + (((cR.height/2)-my)/sc), { animate: true });
     }
+    
+    // 露底防護核心邏輯 (V1.0.5 原封不動)
     function updateMinScale() { const img = document.getElementById('bg-map'), c = document.getElementById('map-section'); if (!img.offsetWidth) return; const min = Math.max(c.clientWidth / img.offsetWidth, c.clientHeight / img.offsetHeight); pz.setOptions({ minScale: min }); if (pz.getScale() < min) pz.zoom(min); }
+    
+    // 畫布同步核心邏輯 (V1.0.5 原封不動)
     function syncOverlay() { const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container'); ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px'; }
+    
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
     function simulateWheel(delta) { const rect = document.getElementById('map-section').getBoundingClientRect(); pz.zoomWithWheel({ clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2, deltaY: delta, preventDefault: () => {} }); }
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
+        // V1.0.5 原生 Panzoom 初始化
         pz = Panzoom(el, { maxScale: 8, contain: 'outside', animate: true });
         
         window.addEventListener('resize', () => { 
