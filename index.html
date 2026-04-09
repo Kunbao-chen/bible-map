@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.2.2</title>
+    <title>聖經史地互動地圖 V1.1.9</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -125,37 +125,31 @@
 </div>
 
 <script>
-    // [架構師視角：V1.2.2 全名與多重入口映射表]
+    // [手術刀修正：全經典全名與「希/來」雙入口兼容]
     const SCRIPTURE_PHYSICAL_MAP = { 
-        // 摩爾門經
         "阿爾瑪書": "bofm/alma", "阿": "bofm/alma",
-        "尼腓一書": "bofm/1-ne", "腓一": "bofm/1-ne",
-        "尼腓二書": "bofm/2-ne", "腓二": "bofm/2-ne",
-        "雅各書": "bofm/jacob", "各": "bofm/jacob", 
-        "摩賽亞書": "bofm/mosiah", "摩賽": "bofm/mosiah",
-        "希拉曼書": "bofm/hel", "曼": "bofm/hel",
-        "尼腓三書": "bofm/3-ne", "腓三": "bofm/3-ne",
-        "尼腓四書": "bofm/4-ne", "腓四": "bofm/4-ne",
-        "摩爾門書": "bofm/morm", "摩爾門": "bofm/morm",
-        "以帖書": "bofm/ether", "以": "bofm/ether",
-        "摩羅乃書": "bofm/moro", "乃": "bofm/moro",
+        "尼腓一書": "bofm/1-ne", "腓一": "bofm/1-ne", "尼腓二書": "bofm/2-ne", "腓二": "bofm/2-ne",
+        "雅各書": "bofm/jacob", "各": "bofm/jacob", "摩賽亞書": "bofm/mosiah", "摩賽": "bofm/mosiah",
+        "希拉曼書": "bofm/hel", "曼": "bofm/hel", "尼腓三書": "bofm/3-ne", "腓三": "bofm/3-ne",
+        "尼腓四書": "bofm/4-ne", "腓四": "bofm/4-ne", "摩爾門書": "bofm/morm", "摩爾門": "bofm/morm",
+        "以帖書": "bofm/ether", "以": "bofm/ether", "摩羅乃書": "bofm/moro", "乃": "bofm/moro",
         "教義和聖約": "dc-testament/dc", "教約": "dc-testament/dc",
-        "無價珍珠": "pgp", "罕": "pgp/abr", "摩西書": "pgp/moses", "摩西": "pgp/moses", "約瑟·斯密——馬太": "pgp/js-m", "約太": "pgp/js-m", "約瑟·斯密——歷史": "pgp/js-h", "約史": "pgp/js-h", "信仰條款": "pgp/a-of-f", "信": "pgp/a-of-f",
-        // 聖經 (常用全名與簡稱)
-        "創世記": "ot/gen", "創": "ot/gen", "出埃及記": "ot/ex", "出": "ot/ex", "利未記": "ot/lev", "利": "ot/lev", "民數記": "ot/num", "民": "ot/num", "申命記": "ot/deut", "申": "ot/deut", "約書亞記": "ot/josh", "書": "ot/josh", "士師記": "ot/judg", "士": "ot/judg", "路得記": "ot/ruth", "得": "ot/ruth", "撒母耳記上": "ot/1-sam", "撒上": "ot/1-sam", "撒母耳記下": "ot/2-sam", "撒下": "ot/2-sam", "列王紀上": "ot/1-kgs", "王上": "ot/1-kgs", "列王紀下": "ot/2-kgs", "王下": "ot/2-kgs", "歷代志上": "ot/1-chr", "代上": "ot/1-chr", "歷代志下": "ot/2-chr", "代下": "ot/2-chr", "以斯拉記": "ot/ezra", "拉": "ot/ezra", "尼希米記": "ot/neh", "尼": "ot/neh", "以斯帖記": "ot/esth", "斯": "ot/esth", "約伯記": "ot/job", "伯": "ot/job", "詩篇": "ot/ps", "詩": "ot/ps", "箴言": "ot/prov", "箴": "ot/prov", "傳道書": "ot/eccl", "傳": "ot/eccl", "雅歌": "ot/ss", "歌": "ot/ss", "以賽亞書": "ot/isa", "賽": "ot/isa", "耶利米書": "ot/jer", "耶": "ot/jer", "耶利米哀歌": "ot/lam", "哀": "ot/lam", "以西結書": "ot/ezek", "結": "ot/ezek", "但以理書": "ot/dan", "但": "ot/dan", "單": "ot/dan", "何西阿書": "ot/hos", "何": "ot/hos", "約珥書": "ot/joel", "珥": "ot/joel", "阿摩司書": "ot/amos", "摩": "ot/amos", "俄巴底亞書": "ot/obad", "俄": "ot/obad", "約拿書": "ot/jonah", "拿": "ot/jonah", "彌迦書": "ot/micah", "彌": "ot/micah", "那鴻書": "ot/nahum", "鴻": "ot/nahum", "哈巴谷書": "ot/hab", "哈": "ot/hab", "西番雅書": "ot/zeph", "番": "ot/zeph", "哈該書": "ot/hag", "該": "ot/hag", "撒迦利亞書": "ot/zech", "亞": "ot/zech", "瑪拉基書": "ot/mal", "瑪": "ot/mal",
-        "馬太福音": "nt/matt", "太": "nt/matt", "馬可福音": "nt/mark", "可": "nt/mark", "路加福音": "nt/luke", "路": "nt/luke", "約翰福音": "nt/john", "約": "nt/john", "使徒行傳": "nt/acts", "徒": "nt/acts", "羅馬書": "nt/rom", "羅": "nt/rom", "哥林多前書": "nt/1-cor", "林前": "nt/1-cor", "哥林多後書": "nt/2-cor", "林後": "nt/2-cor", "加拉太書": "nt/gal", "加": "nt/gal", "以弗所書": "nt/eph", "弗": "nt/eph", "腓立比書": "nt/phil", "腓": "nt/phil", "歌羅西書": "nt/col", "西": "nt/col", "帖撒羅尼迦前書": "nt/1-thes", "帖前": "nt/1-thes", "帖撒羅尼迦後書": "nt/2-thes", "帖後": "nt/2-thes", "提摩太前書": "nt/1-tim", "提前": "nt/1-tim", "提摩太後書": "nt/2-tim", "提後": "nt/2-tim", "提多書": "nt/titus", "多": "nt/titus", "腓利門書": "nt/philem", "門": "nt/philem", "希伯來書": "nt/heb", "來": "nt/heb", "希": "nt/heb", "雅各書": "nt/james", "雅": "nt/james", "彼得前書": "nt/1-pet", "彼前": "nt/1-pet", "彼得後書": "nt/2-pet", "彼後": "nt/2-pet", "約翰一書": "nt/1-jn", "約一": "nt/1-jn", "約翰二書": "nt/2-jn", "約二": "nt/2-jn", "約翰三書": "nt/3-jn", "約三": "nt/3-jn", "猶大書": "nt/jude", "猶": "nt/jude", "啟示錄": "nt/rev", "啟": "nt/rev"
+        "希伯來書": "nt/heb", "來": "nt/heb", "希": "nt/heb",
+        "創世記": "ot/gen", "創": "ot/gen", "出埃及記": "ot/ex", "出": "ot/ex", "利未記": "ot/lev", "利": "ot/lev",
+        "民數記": "ot/num", "民": "ot/num", "申命記": "ot/deut", "申": "ot/deut", "約書亞記": "ot/josh", "書": "ot/josh",
+        "馬太福音": "nt/matt", "太": "nt/matt", "馬可福音": "nt/mark", "可": "nt/mark", "路加福音": "nt/luke", "路": "nt/luke",
+        "約翰福音": "nt/john", "約": "nt/john", "使徒行傳": "nt/acts", "徒": "nt/acts", "啟示錄": "nt/rev", "啟": "nt/rev",
+        "亞伯拉罕書": "pgp/abr", "罕": "pgp/abr", "摩西書": "pgp/moses", "摩西": "pgp/moses"
     };
 
     function openScripture(bookKey, chap, sec, endSec) {
         const path = SCRIPTURE_PHYSICAL_MAP[bookKey];
         let url = "";
         if (path) {
-            let idParam = "";
-            if (sec) {
-                idParam = `p${sec}`;
-                if (endSec) idParam += `-p${endSec}`; 
-            }
-            url = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho${idParam ? '&id=' + idParam + '#p' + sec : ''}`;
+            let idParam = sec ? `p${sec}` : "";
+            if (sec && endSec) idParam = `p${sec}-p${endSec}`;
+            url = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho`;
+            if (idParam) url += `&id=${idParam}#p${sec}`;
         } else {
             url = `https://bible.fhl.net/new/read.php?chineses=${encodeURIComponent(bookKey)}&chap=${chap}`;
         }
@@ -237,7 +231,7 @@
 
     function renderTable(data) { const tbody = document.getElementById('table-body'); tbody.innerHTML = ''; data.forEach((item, i) => { const tr = document.createElement('tr'); tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`; tr.onclick = () => selectEvent(i); tbody.appendChild(tr); }); }
 
-    // [手術刀整合 V1.2.2] 強效判讀邏輯
+    // [V1.1.8 穩定版核心 + 長名優先識別]
     function updateInfoPanel(item) { 
         if(!item) return;
         document.getElementById('info-area').style.display = 'flex'; 
@@ -247,21 +241,12 @@
         
         const convertToLink = (text) => {
             if (!text) return "";
-            // 物理淨化：標準化字元並移除不可見干擾
-            let cleanText = String(text).normalize('NFKC'); 
-            
-            // 長名優先排序：避免「阿」截斷「阿爾瑪書」
+            // 長度排序：確保解析器優先匹配長字串（阿爾瑪書優先於阿）
             const sortedBooks = Object.keys(SCRIPTURE_PHYSICAL_MAP).sort((a, b) => b.length - a.length).join('|');
-            
-            // V1.2.2 強化正則：支持章:節-節、章-章、多種連字號
-            const regex = new RegExp(`(${sortedBooks})[^\\u4e00-\\u9fa5\\w\\s]*(\\d+)(?:[:：](\\d+)(?:[\\-－—~～](\\d+))?)?(?:[\\-－—~～](\\d+))?`, 'g');
-            
-            return cleanText.replace(regex, (m, b, c, s, e, crossChapterEnd) => {
-                let targetChap = c;
-                let targetStart = s || "";
-                let targetEnd = e || crossChapterEnd || "";
-                return `<span class="script-link" onclick="openScripture('${b}', ${targetChap}, '${targetStart}', '${targetEnd}')">${m}</span>`;
-            });
+            // V1.1.8 穩定版正則
+            const regex = new RegExp(`(${sortedBooks})[^\\u4e00-\\u9fa5\\w]*(\\d+)(?:[:：](\\d+)(?:[\\-－—](\\d+))?)?`, 'g');
+            const wrapLink = (m, b, c, s, e) => `<span class="script-link" onclick="openScripture('${b}', ${c}, '${s||""}', '${e||""}')">${m}</span>`;
+            return String(text).replace(regex, wrapLink);
         };
         
         document.getElementById('info-script').innerHTML = convertToLink(item.script);
