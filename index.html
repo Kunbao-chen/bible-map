@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.1.8</title>
+    <title>聖經史地互動地圖 V1.2.2</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -125,19 +125,37 @@
 </div>
 
 <script>
+    // [架構師視角：V1.2.2 全名與多重入口映射表]
     const SCRIPTURE_PHYSICAL_MAP = { 
-        "創": "ot/gen", "出": "ot/ex", "利": "ot/lev", "民": "ot/num", "申": "ot/deut", "書": "ot/josh", "士": "ot/judg", "得": "ot/ruth", "撒上": "ot/1-sam", "撒下": "ot/2-sam", "王上": "ot/1-kgs", "王下": "ot/2-kgs", "代上": "ot/1-chr", "代下": "ot/2-chr", "拉": "ot/ezra", "尼": "ot/neh", "斯": "ot/esth", "伯": "ot/job", "詩": "ot/ps", "箴": "ot/prov", "傳": "ot/eccl", "歌": "ot/ss", "賽": "ot/isa", "耶": "ot/jer", "哀": "ot/lam", "結": "ot/ezek", "但": "ot/dan", "單": "ot/dan", "何": "ot/hos", "珥": "ot/joel", "摩": "ot/amos", "俄": "ot/obad", "拿": "ot/jonah", "彌": "ot/micah", "鴻": "ot/nahum", "哈": "ot/hab", "番": "ot/zeph", "該": "ot/hag", "亞": "ot/zech", "瑪": "mal", 
-        "太": "nt/matt", "可": "nt/mark", "路": "nt/luke", "約": "nt/john", "徒": "nt/acts", "羅": "nt/rom", "林前": "nt/1-cor", "林後": "nt/2-cor", "加": "nt/gal", "弗": "nt/eph", "腓": "nt/phil", "西": "nt/col", "帖前": "nt/1-thes", "帖後": "nt/2-thes", "提前": "nt/1-tim", "提後": "nt/2-tim", "多": "nt/titus", "門": "nt/philem", "來": "nt/heb", "雅": "nt/james", "彼前": "nt/1-pet", "彼後": "nt/2-pet", "約一": "nt/1-jn", "約二": "nt/2-jn", "約三": "nt/3-jn", "猶": "nt/jude", "啟": "nt/rev", 
-        "教約": "dc-testament/dc", "罕": "pgp/abr", "摩西": "pgp/moses", "約太": "pgp/js-m", "約史": "pgp/js-h", "信": "pgp/a-of-f",
-        "腓一": "bofm/1-ne", "腓二": "bofm/2-ne", "各": "bofm/jacob", "挪": "bofm/enos", "龍": "bofm/jarom", "奧": "bofm/omni", "語": "bofm/w-of-m", "摩賽": "bofm/mosiah", "阿": "bofm/alma", "曼": "bofm/hel", "腓三": "bofm/3-ne", "腓四": "bofm/4-ne", "摩爾門": "bofm/morm", "以": "bofm/ether", "乃": "bofm/moro" 
+        // 摩爾門經
+        "阿爾瑪書": "bofm/alma", "阿": "bofm/alma",
+        "尼腓一書": "bofm/1-ne", "腓一": "bofm/1-ne",
+        "尼腓二書": "bofm/2-ne", "腓二": "bofm/2-ne",
+        "雅各書": "bofm/jacob", "各": "bofm/jacob", 
+        "摩賽亞書": "bofm/mosiah", "摩賽": "bofm/mosiah",
+        "希拉曼書": "bofm/hel", "曼": "bofm/hel",
+        "尼腓三書": "bofm/3-ne", "腓三": "bofm/3-ne",
+        "尼腓四書": "bofm/4-ne", "腓四": "bofm/4-ne",
+        "摩爾門書": "bofm/morm", "摩爾門": "bofm/morm",
+        "以帖書": "bofm/ether", "以": "bofm/ether",
+        "摩羅乃書": "bofm/moro", "乃": "bofm/moro",
+        "教義和聖約": "dc-testament/dc", "教約": "dc-testament/dc",
+        "無價珍珠": "pgp", "罕": "pgp/abr", "摩西書": "pgp/moses", "摩西": "pgp/moses", "約瑟·斯密——馬太": "pgp/js-m", "約太": "pgp/js-m", "約瑟·斯密——歷史": "pgp/js-h", "約史": "pgp/js-h", "信仰條款": "pgp/a-of-f", "信": "pgp/a-of-f",
+        // 聖經 (常用全名與簡稱)
+        "創世記": "ot/gen", "創": "ot/gen", "出埃及記": "ot/ex", "出": "ot/ex", "利未記": "ot/lev", "利": "ot/lev", "民數記": "ot/num", "民": "ot/num", "申命記": "ot/deut", "申": "ot/deut", "約書亞記": "ot/josh", "書": "ot/josh", "士師記": "ot/judg", "士": "ot/judg", "路得記": "ot/ruth", "得": "ot/ruth", "撒母耳記上": "ot/1-sam", "撒上": "ot/1-sam", "撒母耳記下": "ot/2-sam", "撒下": "ot/2-sam", "列王紀上": "ot/1-kgs", "王上": "ot/1-kgs", "列王紀下": "ot/2-kgs", "王下": "ot/2-kgs", "歷代志上": "ot/1-chr", "代上": "ot/1-chr", "歷代志下": "ot/2-chr", "代下": "ot/2-chr", "以斯拉記": "ot/ezra", "拉": "ot/ezra", "尼希米記": "ot/neh", "尼": "ot/neh", "以斯帖記": "ot/esth", "斯": "ot/esth", "約伯記": "ot/job", "伯": "ot/job", "詩篇": "ot/ps", "詩": "ot/ps", "箴言": "ot/prov", "箴": "ot/prov", "傳道書": "ot/eccl", "傳": "ot/eccl", "雅歌": "ot/ss", "歌": "ot/ss", "以賽亞書": "ot/isa", "賽": "ot/isa", "耶利米書": "ot/jer", "耶": "ot/jer", "耶利米哀歌": "ot/lam", "哀": "ot/lam", "以西結書": "ot/ezek", "結": "ot/ezek", "但以理書": "ot/dan", "但": "ot/dan", "單": "ot/dan", "何西阿書": "ot/hos", "何": "ot/hos", "約珥書": "ot/joel", "珥": "ot/joel", "阿摩司書": "ot/amos", "摩": "ot/amos", "俄巴底亞書": "ot/obad", "俄": "ot/obad", "約拿書": "ot/jonah", "拿": "ot/jonah", "彌迦書": "ot/micah", "彌": "ot/micah", "那鴻書": "ot/nahum", "鴻": "ot/nahum", "哈巴谷書": "ot/hab", "哈": "ot/hab", "西番雅書": "ot/zeph", "番": "ot/zeph", "哈該書": "ot/hag", "該": "ot/hag", "撒迦利亞書": "ot/zech", "亞": "ot/zech", "瑪拉基書": "ot/mal", "瑪": "ot/mal",
+        "馬太福音": "nt/matt", "太": "nt/matt", "馬可福音": "nt/mark", "可": "nt/mark", "路加福音": "nt/luke", "路": "nt/luke", "約翰福音": "nt/john", "約": "nt/john", "使徒行傳": "nt/acts", "徒": "nt/acts", "羅馬書": "nt/rom", "羅": "nt/rom", "哥林多前書": "nt/1-cor", "林前": "nt/1-cor", "哥林多後書": "nt/2-cor", "林後": "nt/2-cor", "加拉太書": "nt/gal", "加": "nt/gal", "以弗所書": "nt/eph", "弗": "nt/eph", "腓立比書": "nt/phil", "腓": "nt/phil", "歌羅西書": "nt/col", "西": "nt/col", "帖撒羅尼迦前書": "nt/1-thes", "帖前": "nt/1-thes", "帖撒羅尼迦後書": "nt/2-thes", "帖後": "nt/2-thes", "提摩太前書": "nt/1-tim", "提前": "nt/1-tim", "提摩太後書": "nt/2-tim", "提後": "nt/2-tim", "提多書": "nt/titus", "多": "nt/titus", "腓利門書": "nt/philem", "門": "nt/philem", "希伯來書": "nt/heb", "來": "nt/heb", "希": "nt/heb", "雅各書": "nt/james", "雅": "nt/james", "彼得前書": "nt/1-pet", "彼前": "nt/1-pet", "彼得後書": "nt/2-pet", "彼後": "nt/2-pet", "約翰一書": "nt/1-jn", "約一": "nt/1-jn", "約翰二書": "nt/2-jn", "約二": "nt/2-jn", "約翰三書": "nt/3-jn", "約三": "nt/3-jn", "猶大書": "nt/jude", "猶": "nt/jude", "啟示錄": "nt/rev", "啟": "nt/rev"
     };
 
     function openScripture(bookKey, chap, sec, endSec) {
         const path = SCRIPTURE_PHYSICAL_MAP[bookKey];
         let url = "";
         if (path) {
-            url = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho`;
-            if (sec) url += `&id=${endSec ? 'p'+sec+'-p'+endSec : 'p'+sec}#p${sec}`;
+            let idParam = "";
+            if (sec) {
+                idParam = `p${sec}`;
+                if (endSec) idParam += `-p${endSec}`; 
+            }
+            url = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho${idParam ? '&id=' + idParam + '#p' + sec : ''}`;
         } else {
             url = `https://bible.fhl.net/new/read.php?chineses=${encodeURIComponent(bookKey)}&chap=${chap}`;
         }
@@ -145,12 +163,12 @@
         document.getElementById('scripture-modal').style.display = 'block';
         document.getElementById('modal-title').innerText = `${bookKey} 第 ${chap} 章`;
     }
+
     function closeScripture() { document.getElementById('scripture-modal').style.display = 'none'; document.getElementById('scripture-frame').src = ''; }
 
     let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13, fullText = '';
     let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
-    let lastPortraitHeight = "33.33dvh"; 
-    let lastLandscapeWidth = "33.33%";    
+    let lastPortraitHeight = "33.33dvh", lastLandscapeWidth = "33.33%";    
 
     function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) { input.focus(); } else { hideHistory(); } }
     function handleSearch(keyword) { const input = document.getElementById('search-input'); const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase(); const clearBtn = document.getElementById('search-clear'); clearBtn.style.display = term ? 'block' : 'none'; if (!term) { filteredData = [...eventData]; } else { const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const regex = new RegExp(safeTerm, 'gi'); filteredData = eventData.map(item => { const match = item._searchStr.match(regex); return { ...item, score: match ? match.length : 0 }; }).filter(item => item.score > 0).sort((a, b) => parseInt(a.id) - parseInt(b.id)); } renderTable(filteredData); if (term && keyword === undefined) saveHistory(term); if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; } }
@@ -188,7 +206,7 @@
     }
 
     function refreshCollision() {
-        const allMarkers = Array.from(document.querySelectorAll('.marker')); const commons = allMarkers.filter(m => !m.classList.contains('highlight'));
+        const allMarkers = Array.from(document.querySelectorAll('.marker')), commons = allMarkers.filter(m => !m.classList.contains('highlight'));
         commons.sort((a, b) => { const aSize = parseInt(a.dataset.size)||0, bSize = parseInt(b.dataset.size)||0; if (aSize !== bSize) return aSize - bSize; const aFreq = parseInt(a.dataset.freq)||0, bFreq = parseInt(b.dataset.freq)||0; return bFreq - aFreq; });
         const occupied = [];
         commons.forEach(m => { const label = m.querySelector('.label'), rect = label.getBoundingClientRect(), isOverlap = occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom)); if (isOverlap) { label.style.opacity = "0"; m.style.pointerEvents = "none"; } else { label.style.opacity = "1"; m.style.pointerEvents = "auto"; occupied.push(rect); } });
@@ -218,8 +236,8 @@
     }
 
     function renderTable(data) { const tbody = document.getElementById('table-body'); tbody.innerHTML = ''; data.forEach((item, i) => { const tr = document.createElement('tr'); tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`; tr.onclick = () => selectEvent(i); tbody.appendChild(tr); }); }
-    
-    // [手術刀整合 V1.1.8] 全量掃描詳情區文字
+
+    // [手術刀整合 V1.2.2] 強效判讀邏輯
     function updateInfoPanel(item) { 
         if(!item) return;
         document.getElementById('info-area').style.display = 'flex'; 
@@ -227,32 +245,36 @@
         document.getElementById('info-time').innerText = item.time; 
         document.getElementById('info-path').innerText = `地點：${item.loc}`; 
         
-        const scriptEl = document.getElementById('info-script');
+        const convertToLink = (text) => {
+            if (!text) return "";
+            // 物理淨化：標準化字元並移除不可見干擾
+            let cleanText = String(text).normalize('NFKC'); 
+            
+            // 長名優先排序：避免「阿」截斷「阿爾瑪書」
+            const sortedBooks = Object.keys(SCRIPTURE_PHYSICAL_MAP).sort((a, b) => b.length - a.length).join('|');
+            
+            // V1.2.2 強化正則：支持章:節-節、章-章、多種連字號
+            const regex = new RegExp(`(${sortedBooks})[^\\u4e00-\\u9fa5\\w\\s]*(\\d+)(?:[:：](\\d+)(?:[\\-－—~～](\\d+))?)?(?:[\\-－—~～](\\d+))?`, 'g');
+            
+            return cleanText.replace(regex, (m, b, c, s, e, crossChapterEnd) => {
+                let targetChap = c;
+                let targetStart = s || "";
+                let targetEnd = e || crossChapterEnd || "";
+                return `<span class="script-link" onclick="openScripture('${b}', ${targetChap}, '${targetStart}', '${targetEnd}')">${m}</span>`;
+            });
+        };
         
-        // 1. 定義規則 (V1.1.7 的穿透標點邏輯)
-        const sortedBooks = Object.keys(SCRIPTURE_PHYSICAL_MAP).sort((a, b) => b.length - a.length).join('|');
-        const regex = new RegExp(`(${sortedBooks})[^\\u4e00-\\u9fa5\\w]*(\\d+)(?:[:：](\\d+)(?:[\\-－—](\\d+))?)?`, 'g');
-        const wrapLink = (m, b, c, s, e) => `<span class="script-link" onclick="openScripture('${b}', ${c}, '${s||""}', '${e||""}')">${m}</span>`;
+        document.getElementById('info-script').innerHTML = convertToLink(item.script);
+        const noteConverted = convertToLink(item.note);
+        const ldsConverted = convertToLink(item.ldsLink);
         
-        // 2. 準備所有欄位的資料並強制轉化
-        const scriptConverted = String(item.script || "").replace(regex, wrapLink);
-        const noteConverted = String(item.note || "").trim().replace(regex, wrapLink);
-        const ldsConverted = String(item.ldsLink || "").trim().replace(regex, wrapLink);
-        
-        // 3. 渲染經文區
-        scriptEl.innerHTML = scriptConverted;
-        
-        // 4. 渲染備註與正典區 (合併邏輯)
-        let combinedHTML = "";
-        if (noteConverted) {
-            combinedHTML += `<div>${noteConverted}</div>`;
-        }
-        if (ldsConverted && ldsConverted !== "undefined") {
+        let finalHTML = "";
+        if (noteConverted) finalHTML += `<div>${noteConverted}</div>`;
+        if (ldsConverted && ldsConverted !== "undefined" && ldsConverted !== "") {
             const separator = noteConverted ? `<div style="margin-top:10px; border-top:1px dashed #eee; padding-top:10px;"></div>` : "";
-            combinedHTML += `${separator}<div>${ldsConverted}</div>`;
+            finalHTML += `${separator}<div>${ldsConverted}</div>`;
         }
-        
-        document.getElementById('info-note').innerHTML = combinedHTML;
+        document.getElementById('info-note').innerHTML = finalHTML;
     }
 
     function toggleInfo() { const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), area = document.getElementById('info-area'); if (body.style.display === 'none') { body.style.display = 'block'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; } else { body.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; } }
@@ -261,7 +283,9 @@
     async function loadProject(folder) {
         if (!folder) return; currentFolder = folder; localStorage.setItem('lastBibleFolder', folder); allCoords = [];
         const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`); 
-        eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => { 
+        const rawText = await dRes.text();
+        const safeText = rawText.endsWith('\n') ? rawText : rawText + '\n';
+        eventData = parseCSV(safeText).slice(1).filter(r => r.length > 2).map(r => { 
             const obj = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5], ldsLink: r[6] || "" }; 
             obj._searchStr = Object.values(obj).join(' ').toLowerCase(); return obj; 
         });
@@ -274,19 +298,13 @@
     function parseLocationLogic(locStr, db) { const result = { paths: [], points: [] }; locStr.split('+').map(b => b.trim()).forEach(block => { if (block.includes('→')) { const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p); if (chain.length > 1) result.paths.push(chain); chain.forEach(p => result.points.push(p)); } else { const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db); if (pt) result.points.push(pt); } }); return result; }
 
     function applyMarkerStyles() {
-        const s = pz ? pz.getScale() : 1; const anti = s > 0 ? 1 / s : 1;
+        const s = pz ? pz.getScale() : 1, anti = s > 0 ? 1 / s : 1;
         document.querySelectorAll('.marker').forEach(m => { 
             const gain = parseInt(m.dataset.size)||0, label = m.querySelector('.label'); 
-            label.style.fontSize = (baseMarkerFontSize + (gain * 2)) + 'px'; 
-            label.style.transform = `scale(${anti})`; 
-            m.style.transform = `translate(-50%, -50%)`; 
+            label.style.fontSize = (baseMarkerFontSize + (gain * 2)) + 'px'; label.style.transform = `scale(${anti})`; m.style.transform = `translate(-50%, -50%)`; 
         });
     }
-    function adjustFontSize(delta) { 
-        baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); 
-        applyMarkerStyles(); 
-        refreshCollision(); 
-    }
+    function adjustFontSize(delta) { baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); applyMarkerStyles(); refreshCollision(); }
     function flyTo(pts) { if (!pts.length) return; const img = document.getElementById('bg-map'), container = document.getElementById('map-section'); if (!img.offsetWidth) return; const containerRect = container.getBoundingClientRect(), imgRect = img.getBoundingClientRect(), sc = pz.getScale(), currentPan = pz.getPan(); let avgPctX = 0, avgPctY = 0; pts.forEach(p => { avgPctX += parseFloat(p.x); avgPctY += parseFloat(p.y); }); avgPctX /= pts.length; avgPctY /= pts.length; const currentMarkerX = (imgRect.left - containerRect.left) + (imgRect.width * (avgPctX / 100)), currentMarkerY = (imgRect.top - containerRect.top) + (imgRect.height * (avgPctY / 100)); pz.pan(currentPan.x + (((containerRect.width/2)-currentMarkerX)/sc), currentPan.y + (((containerRect.height/2)-currentMarkerY)/sc), { animate: true, duration: 500 }); }
     function updateMinScale() { const img = document.getElementById('bg-map'), c = document.getElementById('map-section'); if (!img.offsetWidth) return; const min = Math.max(c.clientWidth / img.offsetWidth, c.clientHeight / img.offsetHeight); pz.setOptions({ minScale: min }); if (pz.getScale() < min) pz.zoom(min, { animate: false }); const cur = pz.getPan(); pz.pan(cur.x, cur.y, { force: true }); }
     function syncOverlay() { const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container'); ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px'; }
