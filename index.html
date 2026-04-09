@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.1.11</title>
+    <title>聖經史地互動地圖 V1.1.12</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -157,21 +157,17 @@
         const modal = document.getElementById('scripture-modal');
         const title = document.getElementById('modal-title');
         
-        // 3. 更新 UI 與按鈕
+        // 3. 更新 UI 與按鈕 (手術刀優化布局)
         title.innerHTML = `
-            <div style="display:flex; flex-direction:column; gap:8px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-weight:bold;">${bookKey} 第 ${chap} 章</span>
-                    <button onclick="window.open(document.getElementById('scripture-frame').src, '_blank')" 
-                            style="font-size:11px; padding:2px 6px; background:rgba(255,255,255,0.2); border:1px solid white; color:white; border-radius:4px; cursor:pointer;">
-                        🌐 新頁開啟
-                    </button>
-                </div>
-                <div style="display:flex; gap:8px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; width:100%; gap:10px;">
+                <div style="font-weight:bold; font-size:16px;">${bookKey} 第 ${chap} 章</div>
+                <div style="display:flex; gap:5px; align-items:center;">
                     <button id="btn-primary" onclick="switchSrc('${primaryUrl}', true)" 
-                            style="flex:1; font-size:12px; padding:4px; cursor:pointer; background:${primaryUrl?'#c5a059':'#666'}; border:none; color:white; border-radius:4px;">主要來源</button>
+                            style="font-size:11px; padding:3px 8px; cursor:pointer; background:${primaryUrl?'#c5a059':'#666'}; border:none; color:white; border-radius:4px;">主要</button>
                     <button id="btn-backup" onclick="switchSrc('${backupUrl}', false)" 
-                            style="flex:1; font-size:12px; padding:4px; cursor:pointer; background:#2980b9; border:none; color:white; border-radius:4px;">備用連結</button>
+                            style="font-size:11px; padding:3px 8px; cursor:pointer; background:#2980b9; border:none; color:white; border-radius:4px;">備用</button>
+                    <button onclick="window.open(document.getElementById('scripture-frame').src, '_blank')" 
+                            style="font-size:11px; padding:3px 8px; background:rgba(255,255,255,0.2); border:1px solid white; color:white; border-radius:4px; cursor:pointer;">🌐</button>
                 </div>
             </div>
         `;
