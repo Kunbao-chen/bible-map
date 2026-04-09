@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.1.7</title>
+    <title>聖經史地互動地圖 V1.1.8</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -219,6 +219,7 @@
 
     function renderTable(data) { const tbody = document.getElementById('table-body'); tbody.innerHTML = ''; data.forEach((item, i) => { const tr = document.createElement('tr'); tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`; tr.onclick = () => selectEvent(i); tbody.appendChild(tr); }); }
     
+    // [手術刀整合 V1.1.8] 全量掃描詳情區文字
     function updateInfoPanel(item) { 
         if(!item) return;
         document.getElementById('info-area').style.display = 'flex'; 
@@ -227,17 +228,31 @@
         document.getElementById('info-path').innerText = `地點：${item.loc}`; 
         
         const scriptEl = document.getElementById('info-script');
-        const scriptRaw = item.script || "", ldsLinkRaw = item.ldsLink || ""; 
         
-        // [手術刀修正 V1.1.7] 採用強化邊界策略，解決單字經卷名在字首、標點旁的辨識難題
+        // 1. 定義規則 (V1.1.7 的穿透標點邏輯)
         const sortedBooks = Object.keys(SCRIPTURE_PHYSICAL_MAP).sort((a, b) => b.length - a.length).join('|');
-        // 邏輯核心：(經卷名) + (允許非中文非英文字元的緩衝) + (章) + (冒號) + (節) + (連字號) + (節)
         const regex = new RegExp(`(${sortedBooks})[^\\u4e00-\\u9fa5\\w]*(\\d+)(?:[:：](\\d+)(?:[\\-－—](\\d+))?)?`, 'g');
         const wrapLink = (m, b, c, s, e) => `<span class="script-link" onclick="openScripture('${b}', ${c}, '${s||""}', '${e||""}')">${m}</span>`;
         
-        scriptEl.innerHTML = scriptRaw.replace(regex, wrapLink);
-        const linkedLdsContent = ldsLinkRaw.replace(regex, wrapLink);
-        document.getElementById('info-note').innerHTML = `<div>${item.note || ""}</div>` + (ldsLinkRaw ? `<div style="margin-top:10px; border-top:1px dashed #eee; padding-top:10px;">${linkedLdsContent}</div>` : "");
+        // 2. 準備所有欄位的資料並強制轉化
+        const scriptConverted = String(item.script || "").replace(regex, wrapLink);
+        const noteConverted = String(item.note || "").trim().replace(regex, wrapLink);
+        const ldsConverted = String(item.ldsLink || "").trim().replace(regex, wrapLink);
+        
+        // 3. 渲染經文區
+        scriptEl.innerHTML = scriptConverted;
+        
+        // 4. 渲染備註與正典區 (合併邏輯)
+        let combinedHTML = "";
+        if (noteConverted) {
+            combinedHTML += `<div>${noteConverted}</div>`;
+        }
+        if (ldsConverted && ldsConverted !== "undefined") {
+            const separator = noteConverted ? `<div style="margin-top:10px; border-top:1px dashed #eee; padding-top:10px;"></div>` : "";
+            combinedHTML += `${separator}<div>${ldsConverted}</div>`;
+        }
+        
+        document.getElementById('info-note').innerHTML = combinedHTML;
     }
 
     function toggleInfo() { const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), area = document.getElementById('info-area'); if (body.style.display === 'none') { body.style.display = 'block'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; } else { body.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; } }
