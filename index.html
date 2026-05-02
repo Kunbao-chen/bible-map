@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.1.15</title>
+    <title>聖經史地互動地圖 V1.1.13</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -226,7 +226,7 @@
         db.forEach(data => {
             const isH = logic.points.some(p => p.n === data.n); let m = ml.querySelector(`.marker[data-name="${data.n}"]`);
             if (!m) { m = document.createElement('div'); m.className = 'marker'; m.dataset.name = data.n; m.innerHTML = `<div class="dot"></div><div class="label">${data.n}</div>`; m.onclick = (e) => { e.stopPropagation(); const input = document.getElementById('search-input'); input.classList.add('open'); input.value = data.n; handleSearch(data.n); }; ml.appendChild(m); }
-            m.className = `marker ${isH ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`; m.style.left = data.x + '%'; m.style.top = data.y + '%'; m.dataset.size = data.size; const safeName = data.n.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); m.dataset.freq = (fullText.match(new RegExp(safeName, 'g')) || []).length;
+            m.className = `marker ${isH ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`; m.style.left = data.x + '%'; m.style.top = data.y + '%'; m.dataset.size = data.size; m.dataset.freq = fullText.split(data.n).length - 1;
         });
         applyMarkerStyles(); if (logic.points.length) flyTo(logic.points); setTimeout(refreshCollision, 60); 
     }
