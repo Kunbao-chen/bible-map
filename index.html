@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.1.13</title>
+    <title>聖經史地互動地圖 V1.1.14</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -137,21 +137,24 @@
 <script>
     const SCRIPTURE_PHYSICAL_MAP = { 
         "阿爾瑪書": "bofm/alma", "阿": "bofm/alma",
-        "希伯來書": "nt/heb", "來": "nt/heb",
+        "希伯來書": "nt/heb", "來": "nt/heb", "Hebrews": "nt/heb",
         "教義和聖約": "dc-testament/dc", "教約": "dc-testament/dc",
-        "創世記": "ot/gen", "創": "ot/gen", "出": "ot/ex", "利": "ot/lev", "民": "ot/num", "申": "ot/deut", "書": "ot/josh", "士": "ot/judg", "得": "ot/ruth", "撒上": "ot/1-sam", "撒下": "ot/2-sam", "王上": "ot/1-kgs", "王下": "ot/2-kgs", "代上": "ot/1-chr", "代下": "ot/2-chr", "拉": "ot/ezra", "尼": "ot/neh", "斯": "ot/esth", "伯": "ot/job", "詩": "ot/ps", "箴": "ot/prov", "傳": "ot/eccl", "歌": "ot/ss", "賽": "ot/isa", "耶": "ot/jer", "哀": "ot/lam", "結": "ot/ezek", "但": "ot/dan", "單": "ot/dan", "何": "ot/hos", "珥": "ot/joel", "摩": "ot/amos", "俄": "ot/obad", "拿": "ot/jonah", "彌": "ot/micah", "鴻": "ot/nahum", "哈": "ot/hab", "番": "ot/zeph", "該": "ot/hag", "亞": "ot/zech", "瑪": "ot/mal",
-        "太": "nt/matt", "可": "nt/mark", "路": "nt/luke", "約": "nt/john", "徒": "nt/acts", "羅": "nt/rom", "林前": "nt/1-cor", "林後": "nt/2-cor", "加": "nt/gal", "弗": "nt/eph", "腓": "nt/phil", "西": "nt/col", "帖前": "nt/1-thes", "帖後": "nt/2-thes", "提前": "nt/1-tim", "提後": "nt/2-tim", "多": "nt/titus", "門": "nt/philem", "雅": "nt/james", "彼前": "nt/1-pet", "彼後": "nt/2-pet", "約一": "nt/1-jn", "約二": "nt/2-jn", "約三": "nt/3-jn", "猶": "nt/jude", "啟": "nt/rev",
-        "腓一": "bofm/1-ne", "腓二": "bofm/2-ne", "各": "bofm/jacob", "愛": "bofm/enos", "吉": "bofm/jarom", "奧": "bofm/omni", "摩言": "bofm/w-of-m", "摩賽": "bofm/mosiah", "曼": "bofm/hel", "腓三": "bofm/3-ne", "腓四": "bofm/4-ne", "摩爾門": "bofm/morm", "以": "bofm/ether", "乃": "bofm/moro",
-        "罕": "pgp/abr", "摩西": "pgp/moses"
+        "創世記": "ot/gen", "創": "ot/gen", "Genesis": "ot/gen", "出": "ot/ex", "出埃及記": "ot/ex", "Exodus": "ot/ex", "利": "ot/lev", "利未記": "ot/lev", "Leviticus": "ot/lev", "民": "ot/num", "民數記": "ot/num", "Numbers": "ot/num", "申": "ot/deut", "申命記": "ot/deut", "Deuteronomy": "ot/deut", "書": "ot/josh", "士": "ot/judg", "得": "ot/ruth", "撒上": "ot/1-sam", "撒下": "ot/2-sam", "王上": "ot/1-kgs", "王下": "ot/2-kgs", "代上": "ot/1-chr", "代下": "ot/2-chr", "拉": "ot/ezra", "尼": "ot/neh", "斯": "ot/esth", "伯": "ot/job", "詩": "ot/ps", "箴": "ot/prov", "傳": "ot/eccl", "歌": "ot/ss", "賽": "ot/isa", "以賽亞書": "ot/isa", "Isaiah": "ot/isa", "耶": "ot/jer", "哀": "ot/lam", "結": "ot/ezek", "但": "ot/dan", "單": "ot/dan", "何": "ot/hos", "珥": "ot/joel", "摩": "ot/amos", "俄": "ot/obad", "拿": "ot/jonah", "彌": "ot/micah", "鴻": "ot/nahum", "哈": "ot/hab", "番": "ot/zeph", "該": "ot/hag", "亞": "ot/zech", "瑪": "ot/mal",
+        "太": "nt/matt", "馬太福音": "nt/matt", "Matthew": "nt/matt", "可": "nt/mark", "路": "nt/luke", "約": "nt/john", "徒": "nt/acts", "羅": "nt/rom", "林前": "nt/1-cor", "林後": "nt/2-cor", "加": "nt/gal", "弗": "nt/eph", "腓": "nt/phil", "西": "nt/col", "帖前": "nt/1-thes", "帖後": "nt/2-thes", "提前": "nt/1-tim", "提後": "nt/2-tim", "多": "nt/titus", "門": "nt/philem", "雅": "nt/james", "彼前": "nt/1-pet", "彼後": "nt/2-pet", "約一": "nt/1-jn", "約二": "nt/2-jn", "約三": "nt/3-jn", "猶": "nt/jude", "啟": "nt/rev"
     };
 
-    function openScripture(bookKey, chap, sec, endSec) {
+    function openScripture(bookKey, chap, sec, endSec, isJST) {
         const path = SCRIPTURE_PHYSICAL_MAP[bookKey];
         let primaryUrl = "";
         if (path) {
             let idParam = sec ? `p${sec}` : "";
             if (sec && endSec) idParam = `p${sec}-p${endSec}`;
-            primaryUrl = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho`;
+            let finalPath = path;
+            if (isJST) {
+                const parts = path.split('/');
+                if (parts.length === 2) finalPath = `jst/jst-${parts[1]}`;
+            }
+            primaryUrl = `https://www.churchofjesuschrist.org/study/scriptures/${finalPath}/${chap}?lang=zho`;
             if (sec) {
                 const anchor = parseInt(sec) > 1 ? parseInt(sec) - 1 : 1;
                 primaryUrl += `&id=${idParam}#p${anchor}`;
@@ -305,8 +308,8 @@
         const convertToLink = (text) => {
             if (!text) return "";
             const sortedBooks = Object.keys(SCRIPTURE_PHYSICAL_MAP).sort((a, b) => b.length - a.length).join('|');
-            const regex = new RegExp(`(${sortedBooks})[^\\u4e00-\\u9fa5\\w]*(\\d+)(?:[:：](\\d+)(?:[\\-－—](\\d+))?)?`, 'g');
-            const wrapLink = (m, b, c, s, e) => `<span class="script-link" onclick="openScripture('${b}', ${c}, '${s||""}', '${e||""}')">${m}</span>`;
+            const regex = new RegExp(`(JST\\s*|約譯)?(${sortedBooks})[^\\u4e00-\\u9fa5\\w]*(\\d+)(?:[:：](\\d+)(?:[\\-－—](\\d+))?)?`, 'gi');
+            const wrapLink = (m, p1, b, c, s, e) => `<span class="script-link" onclick="openScripture('${b}', ${c}, '${s||""}', '${e||""}', ${!!p1})">${m}</span>`;
             return String(text).replace(regex, wrapLink);
         };
         document.getElementById('info-script').innerHTML = convertToLink(item.script);
